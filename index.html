@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-cn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="原生 HTML/CSS/JS 实现的极简待办清单" />
+    <title>待办清单 Todo-List</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <div>
+          <h1 class="app__title">待办清单</h1>
+          <p class="app__subtitle">保持专注，一件一件完成。</p>
+        </div>
+      </header>
+
+      <section class="card" aria-label="待办事项列表">
+        <form class="todo-form" id="todo-form">
+          <input
+            class="todo-form__input"
+            id="todo-input"
+            type="text"
+            placeholder="要做点什么？"
+          />
+          <button class="btn btn--primary" type="submit">添加</button>
+        </form>
+        <ul class="todo-list" id="todo-list"></ul>
+
+        <footer class="card__footer">
+          <span class="card__count" id="todo-count">0 项待完成</span>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>
