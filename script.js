@@ -22,4 +22,7 @@ $form.addEventListener("submit", (event) => {
   //挂载到 DOM 树
   li.append(span);
   $list.append(li);
+  //清空输入并保持焦点
+  $input.value = "";
+  $input.focus();
 });

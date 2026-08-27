@@ -112,6 +112,7 @@ body {
 
 /* ---------- 布局 ---------- */
 
+/* 应用主容器 */
 .app {
   width: min(100% - 32px, 560px);
   margin-inline: auto;
@@ -119,6 +120,7 @@ body {
   padding-bottom: 96px;
 }
 
+/* 页面头部：标题与主题切换并排 */
 .app__header {
   display: flex;
   align-items: flex-start;
@@ -127,6 +129,7 @@ body {
   margin-bottom: var(--space-6);
 }
 
+/* 页面大标题 */
 .app__title {
   margin: 0;
   font-size: var(--text-2xl);
@@ -134,16 +137,121 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* 副标题（提示语） */
 .app__subtitle {
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
+/* 卡片容器：包住表单和列表 */
 .card {
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
   transition: background-color var(--duration-base);
+}
+
+/* ---------- 组件 ---------- */
+
+/* 通用按钮基础样式 */
+.btn {
+  font: inherit;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast),
+    color var(--duration-fast),
+    opacity var(--duration-fast),
+    transform var(--duration-fast);
+}
+/* 主按钮（添加） */
+.btn--primary {
+  height: 40px;
+  padding-inline: 18px;
+  font-weight: 500;
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+}
+/* 主按钮悬停 */
+.btn--primary:hover {
+  opacity: 0.82;
+}
+/* 主按钮按下 */
+.btn--primary:active {
+  transform: translateY(1px);
+}
+
+/* 新增任务表单行 */
+.todo-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 任务输入框 */
+.todo-form__input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding-inline: var(--space-3);
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast);
+}
+/* 输入框占位文字颜色 */
+.todo-form__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+/* 输入框聚焦背景 */
+.todo-form__input:focus {
+  outline: none;
+  background-color: var(--color-surface-sunken);
+}
+/* 输入框键盘焦点环 */
+.todo-form__input:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* 任务列表容器 */
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 单条任务行 */
+.todo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--duration-fast);
+}
+/* 最后一条去分割线 */
+.todo:last-child {
+  border-bottom: none;
+}
+/* 任务行悬停底色 */
+.todo:hover {
+  background-color: var(--color-surface-sunken);
+}
+
+/* 任务文字：含完成删除线动画 */
+.todo__text {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  transition: color var(--duration-base);
 }
