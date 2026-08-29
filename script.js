@@ -2,6 +2,13 @@
 
 (() => {
   //创建对象：应用状态
+  //todos 结构为：
+  // {
+  //   id: 由 createId() 生成，也是 <li> 上 data-id 的值
+  //   text: 用户输入
+  //   completed: 布尔值
+  // }
+  //数组顺序即页面显示顺序
   const state = {
     todos: [],
   };
@@ -21,8 +28,9 @@
   };
   //函数：生成 ID
   const createId = () => {
-    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   };
+  //函数：创建 SVG 图标
   const svgBtn = (className, label, svg) => {
     const btn = el("button", className);
     btn.type = "button";
@@ -77,17 +85,30 @@
     );
     return li;
   };
-  //函数：离线拼装
-  //拼装的数据来源：state.todos
+  //函数：离线拼装并渲染
+  //拼装的唯一数据来源是 state，所以一切操作的流程都是先改 state，再使用 render()
   const render = () => {
     const fragment = document.createDocumentFragment();
     state.todos.forEach((todo) => fragment.append(createTodoElement(todo)));
     $list.replaceChildren(fragment);
-    $count.textContent = `${state.todos.length} 项待完成`;
+    $count.textContent = `${state.todos.filter((t) => !t.completed).length} 项待完成`;
+    console.log(state.todos);
   };
   //函数：添加 todo
   const addTodo = (text) => {
     state.todos.unshift({ id: createId(), text: text, completed: false });
+    render();
+  };
+  //函数：切换任务完成状态
+  const toggleTodo = (id) => {
+    const todo = state.todos.find((t) => t.id === id);
+    if (!todo) return;
+    todo.completed = !todo.completed;
+    render();
+  };
+  //函数：删除任务
+  const deleteTodo = (id) => {
+    state.todos = state.todos.filter((t) => t.id !== id);
     render();
   };
   //表单提交事件
@@ -98,6 +119,18 @@
     addTodo(text);
     $input.value = "";
     $input.focus();
+  });
+  //列表 click 事件
+  $list.addEventListener("click", (event) => {
+    if (!event.target.closest(".todo__delete")) return;
+    const li = event.target.closest(".todo");
+    deleteTodo(li.dataset.id);
+  });
+  //列表 change 事件
+  $list.addEventListener("change", (event) => {
+    if (!event.target.closest(".todo__checkbox")) return;
+    const li = event.target.closest(".todo");
+    toggleTodo(li.dataset.id);
   });
   //初始化
   render();

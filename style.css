@@ -253,8 +253,3 @@ body {
   overflow-wrap: anywhere;
   transition: color var(--duration-base);
 }
-.todo__box svg {
-  fill: none;
-  stroke: #16a34a;
-  stroke-width: 2;
-}
