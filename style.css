@@ -81,7 +81,7 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ---------- 基础 ---------- */
+/* ---------- 基础与布局 ---------- */
 
 /* 将页面中所有元素（包括伪元素）的盒模型从默认的 content-box 改为 border-box */
 *,
@@ -109,8 +109,6 @@ body {
     background-color var(--duration-base),
     color var(--duration-base);
 }
-
-/* ---------- 布局 ---------- */
 
 /* 应用主容器 */
 .app {
@@ -254,4 +252,9 @@ body {
   min-width: 0;
   overflow-wrap: anywhere;
   transition: color var(--duration-base);
+}
+.todo__box svg {
+  fill: none;
+  stroke: #16a34a;
+  stroke-width: 2;
 }
