@@ -1,17 +1,49 @@
 "use strict";
 
 (() => {
+  //定义常量
+  const STORAGE_KEY = "todo-app:v2"; //localStorage 的键名
+  const SAVE_DELAY = 300; //保存防抖的延迟时间（毫秒）
+  //函数：防抖
+  //参数：fn是需要防抖的真正的业务函数，wait是等待时间
+  //返回值：防抖的新函数
+  const debounce = (fn, wait) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), wait);
+    };
+  };
+  //创建对象：数据读写
+  const store = {
+    load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { todos: [] };
+        const list = JSON.parse(raw);
+        return { todos: Array.isArray(list) ? list : [] };
+      } catch (err) {
+        console.warn("[todo] 读取本地数据失败，以空列表启动：", err);
+        return { todos: [] };
+      }
+    },
+    save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.todos));
+      } catch (err) {
+        console.warn("[todo] 写入本地存储失败：", err);
+      }
+    },
+  };
   //创建对象：应用状态
   //todos 结构为：
   // {
   //   id: 由 createId() 生成，也是 <li> 上 data-id 的值
-  //   text: 用户输入
-  //   completed: 布尔值
+  //   text: 用户输入的文本
+  //   completed: 布尔值，记录任务是否完成
   // }
   //数组顺序即页面显示顺序
-  const state = {
-    todos: [],
-  };
+  const state = { todos: store.load().todos };
   //DOM 引用
   const $ = (id) => document.getElementById(id);
   const $form = $("todo-form");
@@ -85,6 +117,8 @@
     );
     return li;
   };
+  //函数：防抖写入
+  const persist = debounce(() => store.save(), SAVE_DELAY);
   //函数：离线拼装并渲染
   //拼装的唯一数据来源是 state，所以一切操作的流程都是先改 state，再使用 render()
   const render = () => {
@@ -97,6 +131,7 @@
   //函数：添加 todo
   const addTodo = (text) => {
     state.todos.unshift({ id: createId(), text: text, completed: false });
+    persist();
     render();
   };
   //函数：切换任务完成状态
@@ -104,11 +139,13 @@
     const todo = state.todos.find((t) => t.id === id);
     if (!todo) return;
     todo.completed = !todo.completed;
+    persist();
     render();
   };
   //函数：删除任务
   const deleteTodo = (id) => {
     state.todos = state.todos.filter((t) => t.id !== id);
+    persist();
     render();
   };
   //表单提交事件
@@ -131,6 +168,12 @@
     if (!event.target.closest(".todo__checkbox")) return;
     const li = event.target.closest(".todo");
     toggleTodo(li.dataset.id);
+  });
+  //特定情况下，立即写入数据
+  const flushPersist = () => store.save();
+  window.addEventListener("pagehide", flushPersist);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPersist();
   });
   //初始化
   render();
