@@ -117,6 +117,11 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+/* 提升 hidden 优先级 */
+[hidden] {
+  display: none !important;
+}
+
 /* 应用主容器 */
 .app {
   width: min(100% - 32px, 560px);
@@ -160,7 +165,7 @@ input:focus-visible {
 
 /* ---------- 组件 ---------- */
 
-/* 通用按钮基础样式 */
+/* 按钮 */
 .btn {
   font: inherit;
   border: none;
@@ -172,7 +177,6 @@ input:focus-visible {
     opacity var(--duration-fast),
     transform var(--duration-fast);
 }
-/* 主按钮（添加） */
 .btn--primary {
   height: 40px;
   padding-inline: 18px;
@@ -180,16 +184,14 @@ input:focus-visible {
   color: var(--color-accent-contrast);
   background-color: var(--color-accent);
 }
-/* 主按钮悬停 */
 .btn--primary:hover {
   opacity: 0.82;
 }
-/* 主按钮按下 */
 .btn--primary:active {
   transform: translateY(1px);
 }
 
-/* 新增任务表单行 */
+/* 表单 */
 .todo-form {
   display: flex;
   flex-wrap: wrap;
@@ -199,7 +201,7 @@ input:focus-visible {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* 任务输入框 */
+/* 输入框 */
 .todo-form__input {
   flex: 1;
   min-width: 0;
@@ -212,19 +214,46 @@ input:focus-visible {
   border-radius: var(--radius-sm);
   transition: background-color var(--duration-fast);
 }
-/* 输入框占位文字颜色 */
 .todo-form__input::placeholder {
   color: var(--color-text-tertiary);
 }
-/* 输入框聚焦背景 */
 .todo-form__input:focus {
   outline: none;
   background-color: var(--color-surface-sunken);
 }
-/* 输入框键盘焦点环 */
 .todo-form__input:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+}
+
+/* 筛选按钮 */
+.filters {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.filters__btn {
+  padding: var(--space-2) 14px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast),
+    color var(--duration-fast);
+}
+.filters__btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-sunken);
+}
+.filters__btn.is-active {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background-color: var(--color-accent-soft);
 }
 
 /* 任务列表容器 */
@@ -234,7 +263,7 @@ input:focus-visible {
   padding: 0;
 }
 
-/* 单条任务行 */
+/* 任务行 */
 .todo {
   display: flex;
   align-items: center;
@@ -243,16 +272,14 @@ input:focus-visible {
   border-bottom: 1px solid var(--color-border);
   transition: background-color var(--duration-fast);
 }
-/* 最后一条去分割线 */
 .todo:last-child {
   border-bottom: none;
 }
-/* 任务行悬停底色 */
 .todo:hover {
   background-color: var(--color-surface-sunken);
 }
 
-/* 复选框套件 */
+/* 复选框 */
 .todo__check {
   position: relative;
   flex: none;
@@ -373,4 +400,27 @@ input:focus-visible {
   .todo__delete {
     opacity: 1;
   }
+}
+
+/* 空状态提示 */
+.todo-empty {
+  margin: 0;
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* 底栏 */
+.card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.card__count {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
 }

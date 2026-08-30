@@ -2,7 +2,7 @@
 
 (() => {
   //定义常量
-  const STORAGE_KEY = "todo-app:v2"; //localStorage 的键名
+  const STORAGE_KEY = "todo-app:v1"; //localStorage 的键名
   const SAVE_DELAY = 300; //保存防抖的延迟时间（毫秒）
   //函数：防抖
   //参数：fn是需要防抖的真正的业务函数，wait是等待时间
@@ -126,7 +126,6 @@
     state.todos.forEach((todo) => fragment.append(createTodoElement(todo)));
     $list.replaceChildren(fragment);
     $count.textContent = `${state.todos.filter((t) => !t.completed).length} 项待完成`;
-    console.log(state.todos);
   };
   //函数：添加 todo
   const addTodo = (text) => {

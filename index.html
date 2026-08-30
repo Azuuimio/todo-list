@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="原生 HTML/CSS/JS 实现的极简待办清单" />
+    <meta name="description" content="原生 HTML/CSS/JS 实现的待办清单" />
     <title>待办清单 Todo-List</title>
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
@@ -26,6 +26,33 @@
           />
           <button class="btn btn--primary" type="submit">添加</button>
         </form>
+
+        <div class="filters" id="filters" role="group" aria-label="筛选任务">
+          <button
+            class="filters__btn is-active"
+            type="button"
+            data-filter="all"
+            aria-pressed="true"
+          >
+            全部
+          </button>
+          <button
+            class="filters__btn"
+            type="button"
+            data-filter="active"
+            aria-pressed="false"
+          >
+            进行中
+          </button>
+          <button
+            class="filters__btn"
+            type="button"
+            data-filter="completed"
+            aria-pressed="false"
+          >
+            已完成
+          </button>
+        </div>
 
         <ul class="todo-list" id="todo-list"></ul>
 
