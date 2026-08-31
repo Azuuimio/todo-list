@@ -721,6 +721,7 @@ input:focus-visible {
 }
 .todo--leaving {
   animation: todo-out 80ms ease-in forwards;
+  pointer-events: none;
 }
 
 /* -------------------- 响应式与无障碍偏好 -------------------- */
