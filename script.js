@@ -128,7 +128,7 @@
   const $toastUndo = $("toast-undo");
   const $themeToggle = $("theme-toggle");
   const $themeIcon = $("theme-icon");
-  const $$themeLabel = $("theme-label");
+  const $themeLabel = $("theme-label");
 
   //函数：创建元素
   //返回结果等价于：<tag class="className">text</tag>
@@ -208,6 +208,16 @@
 
   //函数：防抖写入
   const persist = debounce(() => store.save(), SAVE_DELAY);
+
+  //
+  const sanitizeTodo = (item) =>
+    item && typeof item.text === "string"
+      ? {
+          id: typeof item.id === "string" ? item.id : createId(),
+          text: item.text,
+          completed: !!item.completed,
+        }
+      : null;
 
   //函数：获取可见任务
   const getVisibleTodos = () => {
@@ -319,6 +329,7 @@
     persist();
     if (state.filter === "completed") setFilter("all");
     else render();
+    $list.querySelector(`[data-id="${todo.id}"]`)?.classList.add("todo--enter");
   };
 
   //函数：切换任务完成状态
@@ -327,7 +338,23 @@
     if (!todo) return;
     todo.completed = !todo.completed;
     persist();
-    render();
+    const li = $list.querySelector(`[data-id="${id}"]`);
+    if (li) {
+      if (state.filter === "all") {
+        li.classList.toggle("todo--completed", todo.completed); // 原地切换，保焦点
+      } else {
+        li.classList.add("todo--leaving");
+        li.addEventListener(
+          "animationend",
+          () => {
+            li.remove();
+            refreshEmptyState();
+          },
+          { once: true },
+        );
+      }
+    }
+    updateFooter();
   };
 
   //函数：行内编辑
@@ -384,13 +411,21 @@
   };
 
   //函数：删除任务
-  const deleteTodo = (id) => {
+  const deleteTodo = (id, li) => {
     const items = removeFromState([id]);
     if (!items.length) return;
     persist();
     updateFooter();
     showUndoToast(items);
-    render();
+    li.classList.add("todo--leaving");
+    li.addEventListener(
+      "animationend",
+      () => {
+        li.remove();
+        refreshEmptyState();
+      },
+      { once: true },
+    );
   };
 
   //函数：撤销
@@ -440,7 +475,10 @@
   };
 
   //函数：繁忙态守卫
-  const isBusy = (li) => !li || li.classList.contains("todo--editing");
+  const isBusy = (li) =>
+    !li ||
+    li.classList.contains("todo--editing") ||
+    li.classList.contains("todo--leaving");
 
   //函数：输入时自动消除错误
   $input.addEventListener(

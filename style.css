@@ -388,7 +388,7 @@ input:focus-visible {
 @keyframes todo-in {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-3px);
   }
 }
 @keyframes todo-out {
@@ -401,7 +401,7 @@ input:focus-visible {
   animation: todo-in var(--duration-base) var(--ease-out);
 }
 .todo--leaving {
-  animation: todo-out 200ms ease-in forwards;
+  animation: todo-out 80ms ease-in forwards;
 }
 
 /* 行内操作按钮 */
@@ -704,4 +704,32 @@ input:focus-visible {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* 特殊情况：减少动态效果 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+  :root {
+    --text-2xl: 1.5rem;
+  }
+  .app {
+    width: min(100% - 24px, 560px);
+    padding-top: var(--space-6);
+  }
+  .theme-toggle__label,
+  #theme-label {
+    display: none;
+  } /* 窄屏主题按钮只留图标 */
+  .card__footer {
+    flex-wrap: wrap;
+  }
 }
