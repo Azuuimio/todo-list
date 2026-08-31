@@ -1,6 +1,8 @@
 "use strict";
 
 (() => {
+  /* -------------------- 常量与工具 -------------------- */
+
   //定义常量
   //任务数据键名
   const STORAGE_KEY = "todo-app:v1";
@@ -31,6 +33,43 @@
       timer = setTimeout(() => fn(...args), wait);
     };
   };
+
+  //函数：生成 ID
+  const createId = () => {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  };
+
+  //函数：清洗任务数据
+  //参数：item 是从本地存储读出的单条任务数据
+  //返回值：结构统一的任务对象，数据非法时返回 null
+  const sanitizeTodo = (item) =>
+    item && typeof item.text === "string"
+      ? {
+          id: typeof item.id === "string" ? item.id : createId(),
+          text: item.text,
+          completed: !!item.completed,
+        }
+      : null;
+
+  //函数：创建元素
+  //返回结果等价于：<tag class="className">text</tag>
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  //函数：创建 SVG 图标按钮
+  const svgBtn = (className, label, svg) => {
+    const btn = el("button", className);
+    btn.type = "button";
+    btn.setAttribute("aria-label", label);
+    btn.innerHTML = svg;
+    return btn;
+  };
+
+  /* -------------------- 存储层 -------------------- */
 
   //创建对象：数据读写
   const store = {
@@ -77,11 +116,14 @@
     },
   };
 
-  //撤销状态
+  /* -------------------- 应用状态 -------------------- */
+
+  //创建对象：撤销状态
+  //结构：{ items: [{ todo, index }], timer }
   let pendingUndo = null;
 
   //创建对象：应用状态
-  //todos 结构为：
+  //todos 的结构为：
   // {
   //   id: 由 createId() 生成，也是 <li> 上 data-id 的值
   //   text: 用户输入的文本
@@ -95,23 +137,7 @@
     theme: store.loadTheme(),
   };
 
-  //主题
-  const THEME_META = {
-    auto: [
-      "跟随系统",
-      '<svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5.5 13.5h5"/></svg>',
-    ],
-    light: [
-      "浅色",
-      '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1"/></svg>',
-    ],
-    dark: [
-      "深色",
-      '<svg viewBox="0 0 16 16"><path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/></svg>',
-    ],
-  };
-  const THEME_ORDER = ["auto", "light", "dark"];
-  const darkMedia = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
+  /* -------------------- DOM 引用 -------------------- */
 
   //DOM 引用
   const $ = (id) => document.getElementById(id);
@@ -132,28 +158,51 @@
   const $themeIcon = $("theme-icon");
   const $themeLabel = $("theme-label");
 
-  //函数：创建元素
-  //返回结果等价于：<tag class="className">text</tag>
-  const el = (tag, className, text) => {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
+  /* -------------------- 主题 -------------------- */
+
+  //主题状态对应的图标与文字
+  const THEME_META = {
+    auto: [
+      "跟随系统",
+      '<svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5.5 13.5h5"/></svg>',
+    ],
+    light: [
+      "浅色",
+      '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1"/></svg>',
+    ],
+    dark: [
+      "深色",
+      '<svg viewBox="0 0 16 16"><path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/></svg>',
+    ],
+  };
+  //主题切换顺序
+  const THEME_ORDER = ["auto", "light", "dark"];
+  //系统深色模式媒体查询
+  const darkMedia = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
+
+  //函数：应用主题
+  const applyTheme = () => {
+    document.documentElement.dataset.theme =
+      state.theme === "auto"
+        ? darkMedia?.matches
+          ? "dark"
+          : "light"
+        : state.theme;
+    const [label, icon] = THEME_META[state.theme];
+    $themeIcon.innerHTML = icon; // 静态 SVG 字符串，安全
+    $themeLabel.textContent = label;
+    $themeToggle.setAttribute("aria-label", `当前主题：${label}，点击切换`);
   };
 
-  //函数：生成 ID
-  const createId = () => {
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  //函数：切换主题
+  const cycleTheme = () => {
+    state.theme =
+      THEME_ORDER[(THEME_ORDER.indexOf(state.theme) + 1) % THEME_ORDER.length];
+    store.saveTheme(state.theme);
+    applyTheme();
   };
 
-  //函数：创建 SVG 图标
-  const svgBtn = (className, label, svg) => {
-    const btn = el("button", className);
-    btn.type = "button";
-    btn.setAttribute("aria-label", label);
-    btn.innerHTML = svg;
-    return btn;
-  };
+  /* -------------------- 渲染 -------------------- */
 
   //函数：创建单条 todo 的 DOM 元素
   //返回结果等价于：
@@ -165,6 +214,9 @@
   //     </span>
   //   </label>
   //   <span class="todo__text">todo.text</span>
+  //   <button class="todo__edit" type="button" aria-label="编辑任务：todo.text">
+  //     <svg viewBox="0 0 14 14"><path d="M8.8 2.7l2.5 2.5L4.5 12H2V9.5l6.8-6.8z"/><path d="M7.6 3.9l2.5 2.5"/></svg>
+  //   </button>
   //   <button class="todo__delete" type="button" aria-label="删除任务：todo.text">
   //     <svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>
   //   </button>
@@ -174,11 +226,12 @@
   // ├─ label.todo__check
   // │   ├─ input.todo__checkbox   ← 真正的勾选控件，透明覆盖在上面
   // │   └─ span.todo__box         ← 肉眼看到的方框，纯装饰
-  // |       └── svg               ← 肉眼看到的对勾，纯装饰
+  // │       └─ svg                ← 肉眼看到的对勾，纯装饰
   // ├─ span.todo__text            ← 任务文字，勾选后 CSS 给它画删除线
   // ├─ button.todo__edit          ← hover 行时才出现的编辑按钮
+  // │   └─ svg                    ← 编辑按钮里的铅笔图标
   // └─ button.todo__delete        ← hover 行时才出现的删除按钮
-  //    └── svg                    ← hover 行时才出现的删除按钮里面的叉号
+  //     └─ svg                    ← 删除按钮里的叉号
   const createTodoElement = (todo) => {
     const li = el("li", `todo${todo.completed ? " todo--completed" : ""}`);
     li.dataset.id = todo.id;
@@ -208,28 +261,39 @@
     return li;
   };
 
-  //函数：防抖写入
-  const persist = debounce(() => store.save(), SAVE_DELAY);
-
-  //
-  const sanitizeTodo = (item) =>
-    item && typeof item.text === "string"
-      ? {
-          id: typeof item.id === "string" ? item.id : createId(),
-          text: item.text,
-          completed: !!item.completed,
-        }
-      : null;
-
   //函数：获取可见任务
+  //返回值：当前筛选条件下的任务数组
   const getVisibleTodos = () => {
     if (state.filter === "active") {
       return state.todos.filter((t) => !t.completed);
     } else if (state.filter === "completed") {
       return state.todos.filter((t) => t.completed);
     } else {
-      return state.todos.filter(() => true);
+      return [...state.todos];
     }
+  };
+
+  //函数：空状态
+  const refreshEmptyState = () => {
+    const hasVisible = $list.children.length > 0;
+    $empty.hidden = hasVisible;
+    if (!hasVisible) $empty.textContent = EMPTY_TEXT[state.filter];
+  };
+
+  //函数：更新底栏
+  const updateFooter = () => {
+    const total = state.todos.length;
+    const remaining = state.todos.filter((t) => !t.completed).length;
+    $count.textContent =
+      total > 0 && remaining === 0
+        ? "全部完成，干得漂亮"
+        : `${remaining} 项待完成`;
+    $clearBtn.disabled = !state.todos.some((t) => t.completed);
+    $toggleAll.disabled = total === 0;
+    $toggleAll.setAttribute(
+      "aria-pressed",
+      String(total > 0 && remaining === 0),
+    );
   };
 
   //函数：离线拼装并渲染
@@ -244,7 +308,18 @@
     updateFooter();
   };
 
+  /* -------------------- 业务操作 -------------------- */
+
+  //函数：防抖写入
+  const persist = debounce(() => store.save(), SAVE_DELAY);
+
+  //函数：立即写入
+  //在页面隐藏前调用，补防抖窗口期，防止数据丢失
+  const flushPersist = () => store.save();
+
   //函数：设置筛选状态
+  //筛选结果同时写入 localStorage 和 URL hash
+  //参数：updateHash 为是否同步 URL hash；persist 为是否写入本地存储（跨标签页同步时要传 false，避免两标签页互写乒乓）
   const setFilter = (
     filter,
     { updateHash = true, persist: shouldPersist = true } = {},
@@ -273,62 +348,17 @@
     return FILTERS.includes(f) ? f : null;
   };
 
-  //函数：切换全选状态
-  const toggleAllTodos = () => {
-    if (!state.todos.length) return;
-    const hasActive = state.todos.some((t) => !t.completed);
-    state.todos.forEach((t) => {
-      t.completed = hasActive;
-    });
-    persist();
-    render();
-  };
-
-  //函数：应用主题
-  const applyTheme = () => {
-    document.documentElement.dataset.theme =
-      state.theme === "auto"
-        ? darkMedia?.matches
-          ? "dark"
-          : "light"
-        : state.theme;
-    const [label, icon] = THEME_META[state.theme];
-    $themeIcon.innerHTML = icon; // 静态 SVG 字符串，安全
-    $themeLabel.textContent = label;
-    $themeToggle.setAttribute("aria-label", `当前主题：${label}，点击切换`);
-  };
-
-  //函数：切换主题
-  const cycleTheme = () => {
-    state.theme =
-      THEME_ORDER[(THEME_ORDER.indexOf(state.theme) + 1) % THEME_ORDER.length];
-    store.saveTheme(state.theme);
-    applyTheme();
-  };
-
-  //函数：输入错误
-  const showInputError = () => {
-    $input.setAttribute("aria-invalid", "true");
-    $hint.hidden = false;
-    $form.classList.remove("todo-form--shake");
-    void $form.offsetWidth;
-    $form.classList.add("todo-form--shake");
-  };
-
-  //函数：清除输入错误
-  const clearInputError = () => {
-    $input.removeAttribute("aria-invalid");
-    $hint.hidden = true;
-  };
-
   //函数：添加 todo
   const addTodo = (text) => {
     const todo = { id: createId(), text, completed: false };
     state.todos.unshift(todo);
+    //快照记录的是删除时点的下标，unshift 置顶新任务后既有任务下标全部 +1，
+    //撤销快照需同步修正，否则还原位置会漂移
     pendingUndo?.items.forEach((item) => {
       item.index += 1;
     });
     persist();
+    //新任务在「已完成」筛选下不可见，自动切回「全部」保证反馈可见
     if (state.filter === "completed") setFilter("all");
     else render();
     $list.querySelector(`[data-id="${todo.id}"]`)?.classList.add("todo--enter");
@@ -343,7 +373,7 @@
     const li = $list.querySelector(`[data-id="${id}"]`);
     if (li) {
       if (state.filter === "all") {
-        li.classList.toggle("todo--completed", todo.completed); // 原地切换，保焦点
+        li.classList.toggle("todo--completed", todo.completed);
       } else {
         li.classList.add("todo--leaving");
         li.addEventListener(
@@ -361,7 +391,13 @@
 
   //函数：行内编辑
   const startEdit = (li, todo) => {
-    if (li.classList.contains("todo--editing")) return;
+    //编辑中或离场动画中的条目不进入编辑，防状态打架
+    if (
+      li.classList.contains("todo--editing") ||
+      li.classList.contains("todo--leaving")
+    ) {
+      return;
+    }
     li.classList.add("todo--editing");
     const input = el("input", "todo__edit-input");
     input.type = "text";
@@ -371,6 +407,7 @@
     li.append(input);
     input.focus();
     input.select();
+    //防重复结算：Enter 提交后 blur 仍会触发
     let settled = false;
     const finish = (commit) => {
       if (settled) return;
@@ -392,11 +429,11 @@
       li.classList.remove("todo--editing");
       input.remove();
     };
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
         finish(true);
-      } else if (e.key === "Escape") finish(false);
+      } else if (event.key === "Escape") finish(false);
     });
     input.addEventListener("blur", () => finish(true));
   };
@@ -430,41 +467,6 @@
     );
   };
 
-  //函数：撤销
-  const undoDelete = () => {
-    if (!pendingUndo) return;
-    const items = [...pendingUndo.items].reverse();
-    hideUndoToast();
-    items.forEach(({ todo, index }) =>
-      state.todos.splice(Math.min(index, state.todos.length), 0, todo),
-    );
-    persist();
-    render();
-  };
-
-  //函数：空状态
-  const refreshEmptyState = () => {
-    const hasVisible = $list.children.length > 0;
-    $empty.hidden = hasVisible;
-    if (!hasVisible) $empty.textContent = EMPTY_TEXT[state.filter];
-  };
-
-  //函数：更新底栏
-  const updateFooter = () => {
-    const total = state.todos.length;
-    const remaining = state.todos.filter((t) => !t.completed).length;
-    $count.textContent =
-      total > 0 && remaining === 0
-        ? "全部完成，干得漂亮"
-        : `${remaining} 项待完成`;
-    $clearBtn.disabled = !state.todos.some((t) => t.completed);
-    $toggleAll.disabled = total === 0;
-    $toggleAll.setAttribute(
-      "aria-pressed",
-      String(total > 0 && remaining === 0),
-    );
-  };
-
   //函数：清除已完成
   const clearCompleted = () => {
     const items = removeFromState(
@@ -476,19 +478,53 @@
     showUndoToast(items);
   };
 
+  //函数：撤销
+  //按删除的逆序插回，保证每个下标在还原时仍然有效
+  const undoDelete = () => {
+    if (!pendingUndo) return;
+    const items = [...pendingUndo.items].reverse();
+    hideUndoToast();
+    items.forEach(({ todo, index }) =>
+      state.todos.splice(Math.min(index, state.todos.length), 0, todo),
+    );
+    persist();
+    render();
+  };
+
+  //函数：切换全选状态
+  const toggleAllTodos = () => {
+    if (!state.todos.length) return;
+    const hasActive = state.todos.some((t) => !t.completed);
+    state.todos.forEach((t) => {
+      t.completed = hasActive;
+    });
+    persist();
+    render();
+  };
+
   //函数：繁忙态守卫
+  //编辑中或离场动画中的条目一律不响应
   const isBusy = (li) =>
     !li ||
     li.classList.contains("todo--editing") ||
     li.classList.contains("todo--leaving");
 
-  //函数：输入时自动消除错误
-  $input.addEventListener(
-    "input",
-    debounce(() => {
-      if ($input.value.trim()) clearInputError();
-    }, 200),
-  );
+  //函数：输入错误
+  const showInputError = () => {
+    $input.setAttribute("aria-invalid", "true");
+    $hint.hidden = false;
+    $form.classList.remove("todo-form--shake");
+    void $form.offsetWidth;
+    $form.classList.add("todo-form--shake");
+  };
+
+  //函数：清除输入错误
+  const clearInputError = () => {
+    $input.removeAttribute("aria-invalid");
+    $hint.hidden = true;
+  };
+
+  /* -------------------- Toast（撤销） -------------------- */
 
   //Toast 入口
   const showUndoToast = (newItems) => {
@@ -498,7 +534,7 @@
     } else {
       pendingUndo = { items: [...newItems], timer: null };
       $toast.hidden = false;
-      requestAnimationFrame(() => $toast.classList.add("toast--visible")); // 下一帧再加类，过渡才生效
+      requestAnimationFrame(() => $toast.classList.add("toast--visible"));
     }
     const n = pendingUndo.items.length;
     $toastText.textContent = n === 1 ? "任务已删除" : `已删除 ${n} 条任务`;
@@ -536,17 +572,7 @@
     dismissToast();
   };
 
-  //多标签页同步
-  window.addEventListener("storage", (e) => {
-    if (e.key === STORAGE_KEY) {
-      const data = store.load();
-      state.todos = data.todos;
-      setFilter(data.filter, { persist: false }); // 复用筛选同步；不回写，防两标签页乒乓
-    } else if (e.key === THEME_KEY) {
-      state.theme = store.loadTheme();
-      applyTheme();
-    }
-  });
+  /* -------------------- 事件绑定 -------------------- */
 
   //监听器：表单提交
   $form.addEventListener("submit", (event) => {
@@ -563,6 +589,14 @@
     $input.focus();
   });
 
+  //监听器：输入时自动消除错误
+  $input.addEventListener(
+    "input",
+    debounce(() => {
+      if ($input.value.trim()) clearInputError();
+    }, 200),
+  );
+
   //监听器：列表 click
   $list.addEventListener("click", (event) => {
     const li = event.target.closest(".todo");
@@ -574,9 +608,9 @@
     }
   });
 
-  //监听器：列表 dbclick
-  $list.addEventListener("dblclick", (e) => {
-    const textEl = e.target.closest(".todo__text");
+  //监听器：列表 dblclick
+  $list.addEventListener("dblclick", (event) => {
+    const textEl = event.target.closest(".todo__text");
     const todo =
       textEl &&
       state.todos.find((t) => t.id === textEl.closest(".todo").dataset.id);
@@ -596,16 +630,34 @@
     if (btn) setFilter(btn.dataset.filter);
   });
 
+  //监听器：点击清除已完成按钮
+  $clearBtn.addEventListener("click", clearCompleted);
+
+  //监听器：点击全选按钮
+  $toggleAll.addEventListener("click", toggleAllTodos);
+
   //监听器：点击撤销按钮
   $toastUndo.addEventListener("click", undoDelete);
 
-  //点击主题切换按钮
+  //监听器：点击主题切换按钮
   $themeToggle.addEventListener("click", cycleTheme);
 
-  //监听器：监听 hashchange
+  //监听器：hashchange
   window.addEventListener("hashchange", () => {
     const f = filterFromHash();
     if (f && f !== state.filter) setFilter(f, { updateHash: false });
+  });
+
+  //监听器：多标签页同步
+  window.addEventListener("storage", (event) => {
+    if (event.key === STORAGE_KEY) {
+      const data = store.load();
+      state.todos = data.todos;
+      setFilter(data.filter, { persist: false });
+    } else if (event.key === THEME_KEY) {
+      state.theme = store.loadTheme();
+      applyTheme();
+    }
   });
 
   //监听器：系统主题改变
@@ -613,19 +665,18 @@
     if (state.theme === "auto") applyTheme();
   });
 
-  $clearBtn.addEventListener("click", clearCompleted);
-  $toggleAll.addEventListener("click", toggleAllTodos);
-
-  //特定情况下，立即写入数据
-  const flushPersist = () => store.save();
+  //监听器：页面隐藏时立即写入
   window.addEventListener("pagehide", flushPersist);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushPersist();
   });
 
+  /* -------------------- 初始化 -------------------- */
+
   //函数：初始化
   const init = () => {
     applyTheme();
+    //筛选优先级：URL hash > 本地存储 > 'all'
     const fromHash = filterFromHash();
     setFilter(fromHash || state.filter, { updateHash: !fromHash });
   };

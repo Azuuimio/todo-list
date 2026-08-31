@@ -148,6 +148,19 @@ input:focus-visible {
   display: none !important;
 }
 
+/* 仅屏幕阅读器可见 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* -------------------- 布局 -------------------- */
+
 /* 应用主容器 */
 .app {
   width: min(100% - 32px, 560px);
@@ -180,7 +193,7 @@ input:focus-visible {
   color: var(--color-text-secondary);
 }
 
-/* 卡片容器：包住表单和列表 */
+/* 卡片容器：包裹表单和列表 */
 .card {
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -191,7 +204,46 @@ input:focus-visible {
 
 /* -------------------- 组件 -------------------- */
 
-/* 按钮 */
+/* 主题切换按钮 */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast),
+    background-color var(--duration-fast);
+}
+.theme-toggle:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-sunken);
+}
+.theme-toggle__icon {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+.theme-toggle__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 通用按钮 */
 .btn {
   font: inherit;
   border: none;
@@ -203,6 +255,8 @@ input:focus-visible {
     opacity var(--duration-fast),
     transform var(--duration-fast);
 }
+
+/* 主按钮 */
 .btn--primary {
   height: 40px;
   padding-inline: 18px;
@@ -217,6 +271,24 @@ input:focus-visible {
   transform: translateY(1px);
 }
 
+/* 幽灵按钮 */
+.btn--ghost {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+}
+.btn--ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-accent-soft);
+}
+
+/* 按钮禁用态 */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* 表单 */
 .todo-form {
   display: flex;
@@ -225,6 +297,51 @@ input:focus-visible {
   gap: var(--space-3);
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-border);
+}
+.todo-form--shake {
+  animation: shake 300ms;
+}
+
+/* 全选按钮 */
+.toggle-all {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    background-color var(--duration-fast),
+    opacity var(--duration-fast);
+}
+.toggle-all svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.toggle-all:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+.toggle-all[aria-pressed="true"] {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.toggle-all:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* 输入框 */
@@ -252,7 +369,20 @@ input:focus-visible {
   outline-offset: -2px;
 }
 
-/* 筛选按钮 */
+/* 输入框错误态 */
+.todo-form__input[aria-invalid="true"] {
+  background-color: var(--color-danger-soft);
+}
+
+/* 提示文字 */
+.todo-form__hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/* 筛选器 */
 .filters {
   display: flex;
   gap: var(--space-1);
@@ -385,23 +515,28 @@ input:focus-visible {
 .todo--completed .todo__text::after {
   transform: scaleX(1);
 }
-@keyframes todo-in {
-  from {
-    opacity: 0;
-    transform: translateY(-3px);
-  }
+
+/* 编辑态 */
+.todo--editing .todo__check,
+.todo--editing .todo__text,
+.todo--editing .todo__edit,
+.todo--editing .todo__delete {
+  display: none;
 }
-@keyframes todo-out {
-  to {
-    opacity: 0;
-    transform: translateX(12px);
-  }
+.todo__edit-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding-inline: var(--space-3);
+  font: inherit;
+  color: inherit;
+  background-color: var(--color-surface-sunken);
+  border: none;
+  border-radius: var(--radius-sm);
 }
-.todo--enter {
-  animation: todo-in var(--duration-base) var(--ease-out);
-}
-.todo--leaving {
-  animation: todo-out 80ms ease-in forwards;
+.todo__edit-input:focus {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
 }
 
 /* 行内操作按钮 */
@@ -478,126 +613,6 @@ input:focus-visible {
   color: var(--color-text-secondary);
 }
 
-/* 仅屏幕阅读器可见 */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-/* 提示文字 */
-.todo-form__hint {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-danger);
-}
-
-/* 输入框错误态 */
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  25% {
-    transform: translateX(-2px);
-  }
-  75% {
-    transform: translateX(2px);
-  }
-}
-.todo-form--shake {
-  animation: shake 300ms;
-}
-.todo-form__input[aria-invalid="true"] {
-  background-color: var(--color-danger-soft);
-}
-
-/* 全选按钮 */
-.toggle-all {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-text-tertiary);
-  background: none;
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition:
-    color var(--duration-fast),
-    border-color var(--duration-fast),
-    background-color var(--duration-fast),
-    opacity var(--duration-fast);
-}
-.toggle-all svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.toggle-all:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  border-color: var(--color-text-primary);
-}
-.toggle-all[aria-pressed="true"] {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.toggle-all:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* 禁用态 */
-.btn--ghost {
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  background: none;
-}
-.btn--ghost:hover:not(:disabled) {
-  color: var(--color-text-primary);
-  background-color: var(--color-accent-soft);
-}
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* 编辑态 */
-.todo--editing .todo__check,
-.todo--editing .todo__text,
-.todo--editing .todo__edit,
-.todo--editing .todo__delete {
-  display: none;
-}
-.todo__edit-input {
-  flex: 1;
-  min-width: 0;
-  height: 36px;
-  padding-inline: var(--space-3);
-  font: inherit;
-  color: inherit;
-  background-color: var(--color-surface-sunken);
-  border: none;
-  border-radius: var(--radius-sm);
-}
-.todo__edit-input:focus {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
-}
-
 /* 撤销 Toast */
 .toast {
   position: fixed;
@@ -656,8 +671,42 @@ input:focus-visible {
   border-radius: inherit;
   background-color: currentColor;
   transform-origin: left center;
-  animation: toast-countdown linear forwards; /* 时长由 JS 内联设置 */
+  animation: toast-countdown linear forwards;
 }
+
+/* -------------------- 动效关键帧 -------------------- */
+
+/* 任务入场 */
+@keyframes todo-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* 任务离场 */
+@keyframes todo-out {
+  to {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+/* 输入错误抖动 */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+/* 撤销倒计时进度条 */
 @keyframes toast-countdown {
   from {
     transform: scaleX(1);
@@ -667,46 +716,20 @@ input:focus-visible {
   }
 }
 
-/* 主题切换按钮 */
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: none;
-  margin-top: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  font: inherit;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition:
-    color var(--duration-fast),
-    background-color var(--duration-fast);
+.todo--enter {
+  animation: todo-in var(--duration-base) var(--ease-out);
 }
-.theme-toggle:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-surface-sunken);
-}
-.theme-toggle__icon {
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-}
-.theme-toggle__icon svg {
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.todo--leaving {
+  animation: todo-out 80ms ease-in forwards;
 }
 
-/* 特殊情况：减少动态效果 */
+/* -------------------- 响应式与无障碍偏好 -------------------- */
+
+/* 减少动态效果 */
+/*
+时长压到近 0 而不是 animation: none 的原因：
+保证 animationend 仍会触发，依赖它的节点清理逻辑不被打断 
+*/
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -725,10 +748,9 @@ input:focus-visible {
     width: min(100% - 24px, 560px);
     padding-top: var(--space-6);
   }
-  .theme-toggle__label,
   #theme-label {
     display: none;
-  } /* 窄屏主题按钮只留图标 */
+  }
   .card__footer {
     flex-wrap: wrap;
   }

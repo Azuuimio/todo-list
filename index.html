@@ -1,6 +1,8 @@
 <!doctype html>
-<html lang="zh-cn">
+<html lang="zh-CN">
   <head>
+    <!-- -------------------- 文档信息 -------------------- -->
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
@@ -8,7 +10,10 @@
       name="description"
       content="原生 HTML/CSS/JS 实现的极简待办清单，用于巩固前端三件套基础。"
     />
-    <title>待办清单 · Vanilla Todo</title>
+    <title>待办清单 Todo-List</title>
+
+    <!-- -------------------- 主题防闪烁脚本 -------------------- -->
+
     <script>
       (() => {
         try {
@@ -21,11 +26,16 @@
         } catch (e) {}
       })();
     </script>
+
+    <!-- -------------------- 样式与脚本 -------------------- -->
+
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
   </head>
   <body>
     <main class="app">
+      <!-- -------------------- 页面头部 -------------------- -->
+
       <header class="app__header">
         <div>
           <h1 class="app__title">待办清单</h1>
@@ -45,7 +55,12 @@
           <span id="theme-label">跟随系统</span>
         </button>
       </header>
+
+      <!-- -------------------- 任务卡片 -------------------- -->
+
       <section class="card" aria-label="待办事项列表">
+        <!-- 新增表单 -->
+
         <form class="todo-form" id="todo-form" novalidate>
           <button
             class="toggle-all"
@@ -75,6 +90,8 @@
           </p>
         </form>
 
+        <!-- 筛选器 -->
+
         <div class="filters" id="filters" role="group" aria-label="筛选任务">
           <button
             class="filters__btn is-active"
@@ -102,11 +119,17 @@
           </button>
         </div>
 
+        <!-- 任务列表与空状态 -->
+
         <ul class="todo-list" id="todo-list"></ul>
         <p class="todo-empty" id="todo-empty" hidden></p>
 
+        <!-- 底栏 -->
+
         <footer class="card__footer">
-          <span class="card__count" id="todo-count">0 项待完成</span>
+          <span class="card__count" id="todo-count" aria-live="polite"
+            >0 项待完成</span
+          >
           <button
             class="btn btn--ghost"
             id="clear-completed"
@@ -118,6 +141,8 @@
         </footer>
       </section>
     </main>
+
+    <!-- -------------------- 撤销 Toast -------------------- -->
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden>
       <span id="toast-text"></span>
