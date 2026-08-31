@@ -69,6 +69,7 @@
   const $ = (id) => document.getElementById(id);
   const $form = $("todo-form");
   const $input = $("todo-input");
+  const $hint = $("input-hint");
   const $filters = $("filters");
   const $list = $("todo-list");
   const $empty = $("todo-empty");
@@ -171,7 +172,7 @@
     updateFooter();
   };
 
-  //设置筛选状态
+  //函数：设置筛选状态
   const setFilter = (
     filter,
     { updateHash = true, persist: shouldPersist = true } = {},
@@ -194,10 +195,25 @@
     render();
   };
 
-  //从 URL 读取筛选状态
+  //函数：从 URL 读取筛选状态
   const filterFromHash = () => {
     const f = location.hash.replace(/^#\/?/, "");
     return FILTERS.includes(f) ? f : null;
+  };
+
+  //函数：输入错误
+  const showInputError = () => {
+    $input.setAttribute("aria-invalid", "true");
+    $hint.hidden = false;
+    $form.classList.remove("todo-form--shake"); // 移除 → reflow → 加回，动画可重播
+    void $form.offsetWidth;
+    $form.classList.add("todo-form--shake");
+  };
+
+  //函数：清除输入错误
+  const clearInputError = () => {
+    $input.removeAttribute("aria-invalid");
+    $hint.hidden = true;
   };
 
   //函数：添加 todo
@@ -241,11 +257,24 @@
         : `${remaining} 项待完成`;
   };
 
+  //函数：输入时自动消除错误
+  $input.addEventListener(
+    "input",
+    debounce(() => {
+      if ($input.value.trim()) clearInputError();
+    }, 200),
+  );
+
   //事件：表单提交
   $form.addEventListener("submit", (event) => {
     event.preventDefault();
     const text = $input.value.trim();
-    if (!text) return;
+    if (!text) {
+      showInputError();
+      $input.focus();
+      return;
+    }
+    clearInputError();
     addTodo(text);
     $input.value = "";
     $input.focus();
@@ -271,7 +300,7 @@
     if (btn) setFilter(btn.dataset.filter);
   });
 
-  //事件：监听hashchange
+  //事件：监听 hashchange
   window.addEventListener("hashchange", () => {
     const f = filterFromHash();
     if (f && f !== state.filter) setFilter(f, { updateHash: false });

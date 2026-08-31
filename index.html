@@ -17,14 +17,33 @@
         </div>
       </header>
       <section class="card" aria-label="待办事项列表">
-        <form class="todo-form" id="todo-form">
+        <form class="todo-form" id="todo-form" novalidate>
           <input
             class="todo-form__input"
             id="todo-input"
             type="text"
             placeholder="要做点什么？"
+            autocomplete="off"
+            maxlength="200"
           />
+          <button
+            class="toggle-all"
+            id="toggle-all"
+            type="button"
+            aria-pressed="false"
+            aria-label="全部完成或全部取消"
+            title="全部完成 / 全部取消"
+            disabled
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2 8.5 6 12.5 14 3.5" />
+            </svg>
+          </button>
+          <label class="sr-only" for="todo-input">新增任务内容</label>
           <button class="btn btn--primary" type="submit">添加</button>
+          <p class="todo-form__hint" id="input-hint" role="alert" hidden>
+            任务内容不能为空
+          </p>
         </form>
 
         <div class="filters" id="filters" role="group" aria-label="筛选任务">
@@ -58,6 +77,14 @@
         <p class="todo-empty" id="todo-empty" hidden></p>
 
         <footer class="card__footer">
+          <button
+            class="btn btn--ghost"
+            id="clear-completed"
+            type="button"
+            disabled
+          >
+            清除已完成
+          </button>
           <span class="card__count" id="todo-count">0 项待完成</span>
         </footer>
       </section>
