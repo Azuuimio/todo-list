@@ -70,10 +70,12 @@
   const $form = $("todo-form");
   const $input = $("todo-input");
   const $hint = $("input-hint");
+  const $toggleAll = $("toggle-all");
   const $filters = $("filters");
   const $list = $("todo-list");
   const $empty = $("todo-empty");
   const $count = $("todo-count");
+  const $clearBtn = $("clear-completed");
 
   //函数：创建元素
   //返回结果等价于：<tag class="className">text</tag>
@@ -94,7 +96,7 @@
     const btn = el("button", className);
     btn.type = "button";
     btn.setAttribute("aria-label", label);
-    btn.innerHTML = svg; // 静态字符串，安全
+    btn.innerHTML = svg;
     return btn;
   };
 
@@ -137,6 +139,11 @@
     li.append(
       check,
       el("span", "todo__text", todo.text),
+      svgBtn(
+        "todo__edit",
+        `编辑任务：${todo.text}`,
+        '<svg viewBox="0 0 14 14"><path d="M8.8 2.7l2.5 2.5L4.5 12H2V9.5l6.8-6.8z"/><path d="M7.6 3.9l2.5 2.5"/></svg>',
+      ),
       svgBtn(
         "todo__delete",
         `删除任务：${todo.text}`,
@@ -201,11 +208,22 @@
     return FILTERS.includes(f) ? f : null;
   };
 
+  //函数：切换全选状态
+  const toggleAllTodos = () => {
+    if (!state.todos.length) return;
+    const hasActive = state.todos.some((t) => !t.completed);
+    state.todos.forEach((t) => {
+      t.completed = hasActive;
+    });
+    persist();
+    render();
+  };
+
   //函数：输入错误
   const showInputError = () => {
     $input.setAttribute("aria-invalid", "true");
     $hint.hidden = false;
-    $form.classList.remove("todo-form--shake"); // 移除 → reflow → 加回，动画可重播
+    $form.classList.remove("todo-form--shake");
     void $form.offsetWidth;
     $form.classList.add("todo-form--shake");
   };
@@ -233,6 +251,48 @@
     render();
   };
 
+  //函数：行内编辑
+  const startEdit = (li, todo) => {
+    if (li.classList.contains("todo--editing")) return;
+    li.classList.add("todo--editing");
+    const input = el("input", "todo__edit-input");
+    input.type = "text";
+    input.maxLength = 200;
+    input.value = todo.text;
+    input.setAttribute("aria-label", "编辑任务内容");
+    li.append(input);
+    input.focus();
+    input.select();
+    let settled = false;
+    const finish = (commit) => {
+      if (settled) return;
+      settled = true;
+      const text = input.value.trim();
+      if (commit && text && text !== todo.text) {
+        todo.text = text;
+        persist();
+        li.querySelector(".todo__text").textContent = text;
+        li.querySelector(".todo__edit").setAttribute(
+          "aria-label",
+          `编辑任务：${text}`,
+        );
+        li.querySelector(".todo__delete").setAttribute(
+          "aria-label",
+          `删除任务：${text}`,
+        );
+      }
+      li.classList.remove("todo--editing");
+      input.remove();
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === "Escape") finish(false);
+    });
+    input.addEventListener("blur", () => finish(true));
+  };
+
   //函数：删除任务
   const deleteTodo = (id) => {
     state.todos = state.todos.filter((t) => t.id !== id);
@@ -255,7 +315,27 @@
       total > 0 && remaining === 0
         ? "全部完成，干得漂亮"
         : `${remaining} 项待完成`;
+    $clearBtn.disabled = !state.todos.some((t) => t.completed);
+    $toggleAll.disabled = total === 0;
+    $toggleAll.setAttribute(
+      "aria-pressed",
+      String(total > 0 && remaining === 0),
+    );
   };
+
+  //函数：清除已完成
+  const clearCompleted = () => {
+    const completedIds = state.todos
+      .filter((t) => t.completed)
+      .map((t) => t.id);
+    if (!completedIds.length) return;
+    state.todos = state.todos.filter((t) => !completedIds.includes(t.id));
+    persist();
+    render();
+  };
+
+  //函数：繁忙态守卫
+  const isBusy = (li) => !li || li.classList.contains("todo--editing");
 
   //函数：输入时自动消除错误
   $input.addEventListener(
@@ -265,7 +345,7 @@
     }, 200),
   );
 
-  //事件：表单提交
+  //监听器：表单提交
   $form.addEventListener("submit", (event) => {
     event.preventDefault();
     const text = $input.value.trim();
@@ -280,31 +360,47 @@
     $input.focus();
   });
 
-  //事件：列表 click
+  //监听器：列表 click
   $list.addEventListener("click", (event) => {
-    if (!event.target.closest(".todo__delete")) return;
     const li = event.target.closest(".todo");
-    deleteTodo(li.dataset.id);
+    if (isBusy(li)) return;
+    if (event.target.closest(".todo__delete")) deleteTodo(li.dataset.id, li);
+    else if (event.target.closest(".todo__edit")) {
+      const todo = state.todos.find((t) => t.id === li.dataset.id);
+      if (todo) startEdit(li, todo);
+    }
   });
 
-  //事件：列表 change
+  //监听器：列表 dbclick
+  $list.addEventListener("dblclick", (e) => {
+    const textEl = e.target.closest(".todo__text");
+    const todo =
+      textEl &&
+      state.todos.find((t) => t.id === textEl.closest(".todo").dataset.id);
+    if (todo) startEdit(textEl.closest(".todo"), todo);
+  });
+
+  //监听器：列表 change
   $list.addEventListener("change", (event) => {
-    if (!event.target.closest(".todo__checkbox")) return;
     const li = event.target.closest(".todo");
-    toggleTodo(li.dataset.id);
+    if (isBusy(li)) return;
+    if (event.target.closest(".todo__checkbox")) toggleTodo(li.dataset.id);
   });
 
-  //事件：点击筛选按钮
-  $filters.addEventListener("click", (e) => {
-    const btn = e.target.closest(".filters__btn");
+  //监听器：点击筛选按钮
+  $filters.addEventListener("click", (event) => {
+    const btn = event.target.closest(".filters__btn");
     if (btn) setFilter(btn.dataset.filter);
   });
 
-  //事件：监听 hashchange
+  //监听器：监听 hashchange
   window.addEventListener("hashchange", () => {
     const f = filterFromHash();
     if (f && f !== state.filter) setFilter(f, { updateHash: false });
   });
+
+  $clearBtn.addEventListener("click", clearCompleted);
+  $toggleAll.addEventListener("click", toggleAllTodos);
 
   //特定情况下，立即写入数据
   const flushPersist = () => store.save();

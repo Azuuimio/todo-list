@@ -360,7 +360,8 @@ input:focus-visible {
   transform: scaleX(1);
 }
 
-/* 删除按钮 */
+/* 行内操作按钮 */
+.todo__edit,
 .todo__delete {
   flex: none;
   display: grid;
@@ -379,6 +380,7 @@ input:focus-visible {
     color var(--duration-fast),
     background-color var(--duration-fast);
 }
+.todo__edit svg,
 .todo__delete svg {
   width: 14px;
   height: 14px;
@@ -388,15 +390,22 @@ input:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.todo:hover .todo__edit,
 .todo:hover .todo__delete,
+.todo:focus-within .todo__edit,
 .todo:focus-within .todo__delete {
   opacity: 1;
+}
+.todo__edit:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-accent-soft);
 }
 .todo__delete:hover {
   color: var(--color-danger);
   background-color: var(--color-danger-soft);
 }
 @media (hover: none) {
+  .todo__edit,
   .todo__delete {
     opacity: 1;
   }
@@ -504,4 +513,43 @@ input:focus-visible {
 .toggle-all:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* 禁用态 */
+.btn--ghost {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+}
+.btn--ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-accent-soft);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 编辑态 */
+.todo--editing .todo__check,
+.todo--editing .todo__text,
+.todo--editing .todo__edit,
+.todo--editing .todo__delete {
+  display: none;
+}
+.todo__edit-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding-inline: var(--space-3);
+  font: inherit;
+  color: inherit;
+  background-color: var(--color-surface-sunken);
+  border: none;
+  border-radius: var(--radius-sm);
+}
+.todo__edit-input:focus {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
 }
