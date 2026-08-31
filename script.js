@@ -40,7 +40,9 @@
         if (!raw) return { todos: [], filter: "all" };
         const data = JSON.parse(raw);
         return {
-          todos: Array.isArray(data.todos) ? data.todos : [],
+          todos: (Array.isArray(data.todos) ? data.todos : [])
+            .map(sanitizeTodo)
+            .filter(Boolean),
           filter: FILTERS.includes(data.filter) ? data.filter : "all",
         };
       } catch (err) {
@@ -534,6 +536,18 @@
     dismissToast();
   };
 
+  //多标签页同步
+  window.addEventListener("storage", (e) => {
+    if (e.key === STORAGE_KEY) {
+      const data = store.load();
+      state.todos = data.todos;
+      setFilter(data.filter, { persist: false }); // 复用筛选同步；不回写，防两标签页乒乓
+    } else if (e.key === THEME_KEY) {
+      state.theme = store.loadTheme();
+      applyTheme();
+    }
+  });
+
   //监听器：表单提交
   $form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -615,4 +629,11 @@
     const fromHash = filterFromHash();
     setFilter(fromHash || state.filter, { updateHash: !fromHash });
   };
+
+  //启动
+  try {
+    init();
+  } catch (err) {
+    console.error("[todo] 初始化失败：", err);
+  }
 })();
