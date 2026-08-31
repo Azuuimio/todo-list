@@ -189,7 +189,7 @@
           : "light"
         : state.theme;
     const [label, icon] = THEME_META[state.theme];
-    $themeIcon.innerHTML = icon; // 静态 SVG 字符串，安全
+    $themeIcon.innerHTML = icon;
     $themeLabel.textContent = label;
     $themeToggle.setAttribute("aria-label", `当前主题：${label}，点击切换`);
   };
@@ -352,13 +352,10 @@
   const addTodo = (text) => {
     const todo = { id: createId(), text, completed: false };
     state.todos.unshift(todo);
-    //快照记录的是删除时点的下标，unshift 置顶新任务后既有任务下标全部 +1，
-    //撤销快照需同步修正，否则还原位置会漂移
     pendingUndo?.items.forEach((item) => {
       item.index += 1;
     });
     persist();
-    //新任务在「已完成」筛选下不可见，自动切回「全部」保证反馈可见
     if (state.filter === "completed") setFilter("all");
     else render();
     $list.querySelector(`[data-id="${todo.id}"]`)?.classList.add("todo--enter");
@@ -391,7 +388,6 @@
 
   //函数：行内编辑
   const startEdit = (li, todo) => {
-    //编辑中或离场动画中的条目不进入编辑，防状态打架
     if (
       li.classList.contains("todo--editing") ||
       li.classList.contains("todo--leaving")
@@ -407,7 +403,6 @@
     li.append(input);
     input.focus();
     input.select();
-    //防重复结算：Enter 提交后 blur 仍会触发
     let settled = false;
     const finish = (commit) => {
       if (settled) return;
@@ -438,7 +433,7 @@
     input.addEventListener("blur", () => finish(true));
   };
 
-  //函数：删除任务并返回撤销快照
+  //函数：从状态中移除指定任务，并返回撤销快照
   const removeFromState = (ids) => {
     const items = [];
     state.todos.forEach((todo, index) => {
@@ -478,7 +473,7 @@
     showUndoToast(items);
   };
 
-  //函数：撤销
+  //函数：撤销删除
   //按删除的逆序插回，保证每个下标在还原时仍然有效
   const undoDelete = () => {
     if (!pendingUndo) return;
@@ -502,14 +497,14 @@
     render();
   };
 
-  //函数：繁忙态守卫
+  //函数：判断条目是否处于繁忙态（编辑中/离场中）
   //编辑中或离场动画中的条目一律不响应
   const isBusy = (li) =>
     !li ||
     li.classList.contains("todo--editing") ||
     li.classList.contains("todo--leaving");
 
-  //函数：输入错误
+  //函数：显示输入错误（提示+抖动）
   const showInputError = () => {
     $input.setAttribute("aria-invalid", "true");
     $hint.hidden = false;
