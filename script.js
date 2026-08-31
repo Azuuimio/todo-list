@@ -2,8 +2,10 @@
 
 (() => {
   //定义常量
-  //localStorage 的键名
+  //任务数据键名
   const STORAGE_KEY = "todo-app:v1";
+  //主题数据键名
+  const THEME_KEY = "todo-app:theme";
   //保存防抖的延迟时间（毫秒）
   const SAVE_DELAY = 300;
   //筛选状态
@@ -14,6 +16,10 @@
     active: "暂无进行中的任务。",
     completed: "暂无已完成的任务。",
   };
+  //撤销窗口显示时间（毫秒）
+  const UNDO_DURATION = 6000;
+  //Toast 退场过渡时间（毫秒）
+  const TOAST_EXIT = 200;
 
   //函数：防抖
   //参数：fn是需要防抖的真正的业务函数，wait是等待时间
@@ -52,7 +58,25 @@
         console.warn("[todo] 写入本地存储失败：", err);
       }
     },
+    loadTheme() {
+      try {
+        const t = localStorage.getItem(THEME_KEY);
+        return t === "light" || t === "dark" ? t : "auto";
+      } catch {
+        return "auto";
+      }
+    },
+    saveTheme(theme) {
+      try {
+        localStorage.setItem(THEME_KEY, theme);
+      } catch {
+        /* 无碍使用 */
+      }
+    },
   };
+
+  //撤销状态
+  let pendingUndo = null;
 
   //创建对象：应用状态
   //todos 结构为：
@@ -63,7 +87,29 @@
   // }
   //数组顺序即页面显示顺序
   const persisted = store.load();
-  const state = { todos: persisted.todos, filter: persisted.filter };
+  const state = {
+    todos: persisted.todos,
+    filter: persisted.filter,
+    theme: store.loadTheme(),
+  };
+
+  //主题
+  const THEME_META = {
+    auto: [
+      "跟随系统",
+      '<svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5.5 13.5h5"/></svg>',
+    ],
+    light: [
+      "浅色",
+      '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1"/></svg>',
+    ],
+    dark: [
+      "深色",
+      '<svg viewBox="0 0 16 16"><path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/></svg>',
+    ],
+  };
+  const THEME_ORDER = ["auto", "light", "dark"];
+  const darkMedia = window.matchMedia?.("(prefers-color-scheme: dark)") ?? null;
 
   //DOM 引用
   const $ = (id) => document.getElementById(id);
@@ -76,6 +122,13 @@
   const $empty = $("todo-empty");
   const $count = $("todo-count");
   const $clearBtn = $("clear-completed");
+  const $toast = $("toast");
+  const $toastText = $("toast-text");
+  const $toastProgress = $("toast-progress");
+  const $toastUndo = $("toast-undo");
+  const $themeToggle = $("theme-toggle");
+  const $themeIcon = $("theme-icon");
+  const $$themeLabel = $("theme-label");
 
   //函数：创建元素
   //返回结果等价于：<tag class="className">text</tag>
@@ -219,6 +272,28 @@
     render();
   };
 
+  //函数：应用主题
+  const applyTheme = () => {
+    document.documentElement.dataset.theme =
+      state.theme === "auto"
+        ? darkMedia?.matches
+          ? "dark"
+          : "light"
+        : state.theme;
+    const [label, icon] = THEME_META[state.theme];
+    $themeIcon.innerHTML = icon; // 静态 SVG 字符串，安全
+    $themeLabel.textContent = label;
+    $themeToggle.setAttribute("aria-label", `当前主题：${label}，点击切换`);
+  };
+
+  //函数：切换主题
+  const cycleTheme = () => {
+    state.theme =
+      THEME_ORDER[(THEME_ORDER.indexOf(state.theme) + 1) % THEME_ORDER.length];
+    store.saveTheme(state.theme);
+    applyTheme();
+  };
+
   //函数：输入错误
   const showInputError = () => {
     $input.setAttribute("aria-invalid", "true");
@@ -236,7 +311,11 @@
 
   //函数：添加 todo
   const addTodo = (text) => {
-    state.todos.unshift({ id: createId(), text: text, completed: false });
+    const todo = { id: createId(), text, completed: false };
+    state.todos.unshift(todo);
+    pendingUndo?.items.forEach((item) => {
+      item.index += 1;
+    });
     persist();
     if (state.filter === "completed") setFilter("all");
     else render();
@@ -293,9 +372,35 @@
     input.addEventListener("blur", () => finish(true));
   };
 
+  //函数：删除任务并返回撤销快照
+  const removeFromState = (ids) => {
+    const items = [];
+    state.todos.forEach((todo, index) => {
+      if (ids.includes(todo.id)) items.push({ todo, index });
+    });
+    if (items.length)
+      state.todos = state.todos.filter((t) => !ids.includes(t.id));
+    return items;
+  };
+
   //函数：删除任务
   const deleteTodo = (id) => {
-    state.todos = state.todos.filter((t) => t.id !== id);
+    const items = removeFromState([id]);
+    if (!items.length) return;
+    persist();
+    updateFooter();
+    showUndoToast(items);
+    render();
+  };
+
+  //函数：撤销
+  const undoDelete = () => {
+    if (!pendingUndo) return;
+    const items = [...pendingUndo.items].reverse();
+    hideUndoToast();
+    items.forEach(({ todo, index }) =>
+      state.todos.splice(Math.min(index, state.todos.length), 0, todo),
+    );
     persist();
     render();
   };
@@ -325,13 +430,13 @@
 
   //函数：清除已完成
   const clearCompleted = () => {
-    const completedIds = state.todos
-      .filter((t) => t.completed)
-      .map((t) => t.id);
-    if (!completedIds.length) return;
-    state.todos = state.todos.filter((t) => !completedIds.includes(t.id));
+    const items = removeFromState(
+      state.todos.filter((t) => t.completed).map((t) => t.id),
+    );
+    if (!items.length) return;
     persist();
     render();
+    showUndoToast(items);
   };
 
   //函数：繁忙态守卫
@@ -344,6 +449,52 @@
       if ($input.value.trim()) clearInputError();
     }, 200),
   );
+
+  //Toast 入口
+  const showUndoToast = (newItems) => {
+    if (pendingUndo) {
+      clearTimeout(pendingUndo.timer);
+      pendingUndo.items = [...pendingUndo.items, ...newItems];
+    } else {
+      pendingUndo = { items: [...newItems], timer: null };
+      $toast.hidden = false;
+      requestAnimationFrame(() => $toast.classList.add("toast--visible")); // 下一帧再加类，过渡才生效
+    }
+    const n = pendingUndo.items.length;
+    $toastText.textContent = n === 1 ? "任务已删除" : `已删除 ${n} 条任务`;
+    restartCountdown();
+    pendingUndo.timer = setTimeout(finalizeUndo, UNDO_DURATION);
+  };
+
+  //Toast 重启进度条
+  const restartCountdown = () => {
+    $toastProgress.style.animation = "none";
+    void $toastProgress.offsetWidth;
+    $toastProgress.style.animation = "";
+    $toastProgress.style.animationDuration = `${UNDO_DURATION}ms`;
+  };
+
+  //Toast 退场过渡
+  const dismissToast = () => {
+    $toast.classList.remove("toast--visible");
+    setTimeout(() => {
+      if (!pendingUndo) $toast.hidden = true;
+    }, TOAST_EXIT);
+  };
+
+  //Toast 窗口到期
+  const finalizeUndo = () => {
+    if (!pendingUndo) return;
+    pendingUndo = null;
+    dismissToast();
+  };
+
+  //Toast 主动隐藏
+  const hideUndoToast = () => {
+    clearTimeout(pendingUndo?.timer);
+    pendingUndo = null;
+    dismissToast();
+  };
 
   //监听器：表单提交
   $form.addEventListener("submit", (event) => {
@@ -393,10 +544,21 @@
     if (btn) setFilter(btn.dataset.filter);
   });
 
+  //监听器：点击撤销按钮
+  $toastUndo.addEventListener("click", undoDelete);
+
+  //点击主题切换按钮
+  $themeToggle.addEventListener("click", cycleTheme);
+
   //监听器：监听 hashchange
   window.addEventListener("hashchange", () => {
     const f = filterFromHash();
     if (f && f !== state.filter) setFilter(f, { updateHash: false });
+  });
+
+  //监听器：系统主题改变
+  darkMedia?.addEventListener?.("change", () => {
+    if (state.theme === "auto") applyTheme();
   });
 
   $clearBtn.addEventListener("click", clearCompleted);
@@ -409,7 +571,10 @@
     if (document.visibilityState === "hidden") flushPersist();
   });
 
-  //初始化
-  const fromHash = filterFromHash();
-  setFilter(fromHash || state.filter);
+  //函数：初始化
+  const init = () => {
+    applyTheme();
+    const fromHash = filterFromHash();
+    setFilter(fromHash || state.filter, { updateHash: !fromHash });
+  };
 })();

@@ -79,6 +79,32 @@
   --duration-base: 250ms;
   /* 快出慢回 */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* 主题 */
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #141414;
+  --color-surface: #1f1f1f;
+  --color-surface-sunken: #2a2a2a;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.32);
+  --color-text-primary: #ececec;
+  --color-text-secondary: #a3a3a3;
+  --color-text-tertiary: #6e6e6e;
+  --color-accent: #ececec;
+  --color-accent-contrast: #1a1a1a;
+  --color-accent-soft: rgba(255, 255, 255, 0.1);
+  --color-danger: #d97a72;
+  --color-danger-soft: rgba(217, 122, 114, 0.14);
+  --color-focus-ring: rgba(255, 255, 255, 0.5);
+  --color-toast-bg: #ececec;
+  --color-toast-text: #1a1a1a;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
 }
 
 /* -------------------- 基础 -------------------- */
@@ -359,6 +385,24 @@ input:focus-visible {
 .todo--completed .todo__text::after {
   transform: scaleX(1);
 }
+@keyframes todo-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes todo-out {
+  to {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+.todo--enter {
+  animation: todo-in var(--duration-base) var(--ease-out);
+}
+.todo--leaving {
+  animation: todo-out 200ms ease-in forwards;
+}
 
 /* 行内操作按钮 */
 .todo__edit,
@@ -552,4 +596,112 @@ input:focus-visible {
 .todo__edit-input:focus {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
+}
+
+/* 撤销 Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-5);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 10px var(--space-4) 14px;
+  font-size: var(--text-sm);
+  color: var(--color-toast-text);
+  background-color: var(--color-toast-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  opacity: 0;
+  transform: translate(-50%, 16px);
+  pointer-events: none;
+  transition:
+    opacity var(--duration-fast),
+    transform var(--duration-fast) var(--ease-out);
+}
+.toast--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.toast__action {
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  background: none;
+  border: none;
+  border-radius: var(--space-1);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.toast__action:hover {
+  opacity: 0.75;
+}
+.toast__progress {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-2);
+  height: 2px;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, currentColor 18%, transparent);
+  overflow: hidden;
+}
+.toast__progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background-color: currentColor;
+  transform-origin: left center;
+  animation: toast-countdown linear forwards; /* 时长由 JS 内联设置 */
+}
+@keyframes toast-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* 主题切换按钮 */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast),
+    background-color var(--duration-fast);
+}
+.theme-toggle:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-sunken);
+}
+.theme-toggle__icon {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+.theme-toggle__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

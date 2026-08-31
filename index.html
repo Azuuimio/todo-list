@@ -3,8 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="原生 HTML/CSS/JS 实现的待办清单" />
-    <title>待办清单 Todo-List</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="原生 HTML/CSS/JS 实现的极简待办清单，用于巩固前端三件套基础。"
+    />
+    <title>待办清单 · Vanilla Todo</title>
+    <script>
+      (() => {
+        try {
+          const t = localStorage.getItem("todo-app:theme") || "auto";
+          const dark =
+            t === "auto"
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+              : t === "dark";
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
   </head>
@@ -15,6 +31,19 @@
           <h1 class="app__title">待办清单</h1>
           <p class="app__subtitle">保持专注，一件一件完成。</p>
         </div>
+        <button
+          class="theme-toggle"
+          id="theme-toggle"
+          type="button"
+          aria-label="切换主题"
+        >
+          <span
+            class="theme-toggle__icon"
+            id="theme-icon"
+            aria-hidden="true"
+          ></span>
+          <span id="theme-label">跟随系统</span>
+        </button>
       </header>
       <section class="card" aria-label="待办事项列表">
         <form class="todo-form" id="todo-form" novalidate>
@@ -89,5 +118,13 @@
         </footer>
       </section>
     </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span id="toast-text"></span>
+      <button class="toast__action" id="toast-undo" type="button">撤销</button>
+      <span class="toast__progress" aria-hidden="true"
+        ><span id="toast-progress"></span
+      ></span>
+    </div>
   </body>
 </html>
