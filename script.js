@@ -273,7 +273,7 @@
     }
   };
 
-  //函数：空状态
+  //函数：同步空状态提示
   const refreshEmptyState = () => {
     const hasVisible = $list.children.length > 0;
     $empty.hidden = hasVisible;
@@ -318,7 +318,7 @@
   const flushPersist = () => store.save();
 
   //函数：设置筛选状态
-  //筛选结果同时写入 localStorage 和 URL hash
+  //行为：筛选结果同时写入 localStorage 和 URL hash
   //参数：updateHash 为是否同步 URL hash；persist 为是否写入本地存储（跨标签页同步时要传 false，避免两标签页互写乒乓）
   const setFilter = (
     filter,
