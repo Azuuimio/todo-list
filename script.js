@@ -314,7 +314,7 @@
   const persist = debounce(() => store.save(), SAVE_DELAY);
 
   //函数：立即写入
-  //在页面隐藏前调用，补防抖窗口期，防止数据丢失
+  //在页面隐藏前调用，防止数据丢失
   const flushPersist = () => store.save();
 
   //函数：设置筛选状态
@@ -498,7 +498,6 @@
   };
 
   //函数：判断条目是否处于繁忙态（编辑中/离场中）
-  //编辑中或离场动画中的条目一律不响应
   const isBusy = (li) =>
     !li ||
     li.classList.contains("todo--editing") ||
