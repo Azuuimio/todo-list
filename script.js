@@ -584,12 +584,10 @@
   });
 
   //监听器：输入时自动消除错误
-  $input.addEventListener(
-    "input",
-    debounce(() => {
-      if ($input.value.trim()) clearInputError();
-    }, 200),
-  );
+  $input.addEventListener("input", () => {
+    if ($hint.hidden) return;
+    if ($input.value.trim()) clearInputError();
+  });
 
   //监听器：列表 click
   $list.addEventListener("click", (event) => {
