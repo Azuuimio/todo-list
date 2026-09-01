@@ -19,7 +19,7 @@
     completed: "暂无已完成的任务。",
   };
   //撤销窗口显示时间（毫秒）
-  const UNDO_DURATION = 6000;
+  const UNDO_DURATION = 4000;
   //Toast 退场过渡时间（毫秒）
   const TOAST_EXIT = 200;
 
