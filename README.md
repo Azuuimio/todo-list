@@ -2,4 +2,4 @@
 
 原生 HTML / CSS / JS 实现的极简待办清单
 
-网址：https://azuuimio.github.io/todo-list/
+在线预览：https://azuuimio.github.io/todo-list/
