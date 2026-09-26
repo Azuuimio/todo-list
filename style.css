@@ -51,7 +51,7 @@
   /* 辅助小字 */
   --text-sm: 0.8125rem;
 
-  /* 基线间距系统，所有留白都从这 7 个值里选 */
+  /* 常用间距变量 */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -727,11 +727,10 @@ input:focus-visible {
 
 /* -------------------- 响应式与无障碍偏好 -------------------- */
 
-/* 减少动态效果 */
 /*
-时长压到接近 0 而不是 animation: none 的原因：
-保证 animationend 仍会触发，依赖它的节点清理逻辑不被打断 
-*/
+ * 减少动态效果：将时长压到接近 0，保留 animationend 事件，
+ * 让依赖该事件的节点清理逻辑仍能执行。
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
