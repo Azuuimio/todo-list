@@ -228,7 +228,7 @@
   // │   └─ svg                     ← 编辑按钮里的铅笔图标
   // └─ button.todo__delete         ← 删除按钮
   //     └─ svg                     ← 删除按钮里的叉号
-  // 操作按钮在行悬停或行内元素获得焦点时显示；无悬停能力的设备上始终显示。
+  // 操作按钮在行悬停或行内元素匹配 :focus-visible 时显示；无悬停能力的设备上始终显示。
   const createTodoElement = (todo) => {
     const li = el("li", `todo${todo.completed ? " todo--completed" : ""}`);
     li.dataset.id = todo.id;

@@ -572,8 +572,8 @@ input:focus-visible {
 }
 .todo:hover .todo__edit,
 .todo:hover .todo__delete,
-.todo:focus-within .todo__edit,
-.todo:focus-within .todo__delete {
+.todo:has(:focus-visible) .todo__edit,
+.todo:has(:focus-visible) .todo__delete {
   opacity: 1;
 }
 .todo__edit:hover {
