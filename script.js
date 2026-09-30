@@ -593,7 +593,7 @@
     const n = pendingUndo.batches.reduce((total, items) => total + items.length, 0);
     $toastText.textContent = n === 1 ? "任务已删除" : `已删除 ${n} 条任务`;
     resetCountdownProgress();
-    if (!$toast.contains(document.activeElement)) resumeCountdown();
+    resumeCountdown();
   };
 
   // 函数：重置倒计时进度条，并保持暂停状态
@@ -618,9 +618,17 @@
     $toastProgress.style.animationPlayState = "paused";
   };
 
-  // 函数：按剩余时间继续倒计时，不重新计算完整的撤销窗口
-  const resumeCountdown = () => {
-    if (!pendingUndo || pendingUndo.timer !== null) return;
+  // 函数：鼠标和焦点都离开撤销窗口后，按剩余时间继续倒计时
+  // 参数：focusedElement 默认为当前焦点；失焦时传入即将获得焦点的元素。
+  const resumeCountdown = (focusedElement = document.activeElement) => {
+    if (
+      !pendingUndo ||
+      pendingUndo.timer !== null ||
+      $toast.matches(":hover") ||
+      $toast.contains(focusedElement)
+    ) {
+      return;
+    }
     pendingUndo.startedAt = performance.now();
     pendingUndo.timer = setTimeout(finalizeUndo, pendingUndo.remaining);
     $toastProgress.style.animationPlayState = "running";
@@ -711,10 +719,12 @@
   $toastUndo.addEventListener("click", undoDelete);
   $themeToggle.addEventListener("click", cycleTheme);
 
-  // 监听器：焦点进入撤销窗口时暂停，离开整个窗口后继续倒计时
+  // 监听器：鼠标悬停或焦点进入撤销窗口时暂停，两者都离开后继续倒计时
+  $toast.addEventListener("mouseenter", pauseCountdown);
+  $toast.addEventListener("mouseleave", () => resumeCountdown());
   $toast.addEventListener("focusin", pauseCountdown);
   $toast.addEventListener("focusout", (event) => {
-    if (!$toast.contains(event.relatedTarget)) resumeCountdown();
+    resumeCountdown(event.relatedTarget);
   });
 
   // 监听器：hashchange
