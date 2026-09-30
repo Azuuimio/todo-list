@@ -219,15 +219,15 @@
   // 结构树如下：
   // li.todo
   // ├─ label.todo__check
-  // │   ├─ input.todo__checkbox   ← 真正的勾选控件，透明覆盖在上面
-  // │   └─ span.todo__box         ← 肉眼看到的方框，纯装饰
-  // │       └─ svg                ← 肉眼看到的对勾，纯装饰
-  // ├─ span.todo__text            ← 文字容器，参与任务行的 flex 布局
+  // │   ├─ input.todo__checkbox    ← 真正的勾选控件，透明覆盖在上面
+  // │   └─ span.todo__box          ← 肉眼看到的方框，纯装饰
+  // │       └─ svg                 ← 肉眼看到的对勾，纯装饰
+  // ├─ span.todo__text             ← 文字容器，参与任务行的 flex 布局
   // │   └─ span.todo__text-content ← 行内文字，勾选后每行分别展开删除线
-  // ├─ button.todo__edit          ← 编辑按钮
-  // │   └─ svg                    ← 编辑按钮里的铅笔图标
-  // └─ button.todo__delete        ← 删除按钮
-  //     └─ svg                    ← 删除按钮里的叉号
+  // ├─ button.todo__edit           ← 编辑按钮
+  // │   └─ svg                     ← 编辑按钮里的铅笔图标
+  // └─ button.todo__delete         ← 删除按钮
+  //     └─ svg                     ← 删除按钮里的叉号
   // 操作按钮在行悬停或行内元素获得焦点时显示；无悬停能力的设备上始终显示。
   const createTodoElement = (todo) => {
     const li = el("li", `todo${todo.completed ? " todo--completed" : ""}`);
@@ -331,10 +331,7 @@
   // 默认将筛选状态同步到 URL hash，状态变化后立即写入 localStorage。
   // 参数：updateHash 控制是否同步 URL hash；persist 控制是否写入本地存储。
   // 初始化恢复状态或与新增任务一并保存时，将 persist 设为 false，避免重复写入。
-  const setFilter = (
-    filter,
-    { updateHash = true, persist = true } = {},
-  ) => {
+  const setFilter = (filter, { updateHash = true, persist = true } = {}) => {
     const next = FILTERS.includes(filter) ? filter : "all";
     const changed = next !== state.filter;
     state.filter = next;
@@ -590,7 +587,10 @@
     pendingUndo.timer = null;
     pendingUndo.remaining = UNDO_DURATION;
     $toastUndo.disabled = false;
-    const n = pendingUndo.batches.reduce((total, items) => total + items.length, 0);
+    const n = pendingUndo.batches.reduce(
+      (total, items) => total + items.length,
+      0,
+    );
     $toastText.textContent = n === 1 ? "任务已删除" : `已删除 ${n} 条任务`;
     resetCountdownProgress();
     resumeCountdown();
