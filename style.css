@@ -68,7 +68,7 @@
   --radius-md: 10px;
   /* 大容器 */
   --radius-lg: 16px;
-  /* 完全圆形 */
+  /* 圆形或胶囊形圆角 */
   --radius-full: 999px;
 
   /* 动效时长与缓动 */
@@ -185,13 +185,6 @@ input:focus-visible {
   font-size: var(--text-2xl);
   font-weight: 600;
   letter-spacing: -0.02em;
-}
-
-/* 副标题（提示语） */
-.app__subtitle {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
 }
 
 /* 卡片容器：包裹表单和列表 */
@@ -572,8 +565,8 @@ input:focus-visible {
 }
 .todo:hover .todo__edit,
 .todo:hover .todo__delete,
-.todo:focus-within .todo__edit,
-.todo:focus-within .todo__delete {
+.todo:has(:focus-visible) .todo__edit,
+.todo:has(:focus-visible) .todo__delete {
   opacity: 1;
 }
 .todo__edit:hover {
@@ -648,7 +641,7 @@ input:focus-visible {
   color: inherit;
   background: none;
   border: none;
-  border-radius: var(--space-1);
+  border-radius: 4px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
