@@ -7,8 +7,6 @@
   const STORAGE_KEY = "todo-app:v1";
   // 主题数据键名
   const THEME_KEY = "todo-app:theme";
-  // 保存防抖的延迟时间（毫秒）
-  const SAVE_DELAY = 300;
   // 筛选状态
   const FILTERS = ["all", "active", "completed"];
   // 空状态文案
@@ -17,21 +15,10 @@
     active: "暂无进行中的任务。",
     completed: "暂无已完成的任务。",
   };
-  // 撤销窗口显示时间（毫秒）
+  // 撤销倒计时的初始时长（毫秒），暂停期间不计时
   const UNDO_DURATION = 6000;
-  // Toast 退场过渡时间（毫秒）
-  const TOAST_EXIT = 200;
-
-  // 函数：防抖
-  // 参数：fn 是需要防抖的业务函数，wait 是等待时间（毫秒）
-  // 返回值：防抖的新函数
-  const debounce = (fn, wait) => {
-    let timer;
-    return (...args) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => fn(...args), wait);
-    };
-  };
+  // Toast 开始退场至隐藏节点的等待时间（毫秒）
+  const TOAST_HIDE_DELAY = 200;
 
   // 函数：生成 ID
   const createId = () => {
@@ -110,7 +97,7 @@
       try {
         localStorage.setItem(THEME_KEY, theme);
       } catch {
-        /* 无碍使用 */
+        /* 本次主题切换仍生效，但无法保存偏好 */
       }
     },
   };
@@ -118,8 +105,13 @@
   /* -------------------- 应用状态 -------------------- */
 
   // 创建对象：撤销状态
-  // 结构：{ batches: [[{ todo, index }]], timer }
+  // 结构：{ batches: [[{ todo, index }]], timer, remaining, startedAt }
+  // remaining 记录本轮开始或暂停时的剩余毫秒数，不实时递减。
+  // startedAt 为本轮计时起点；timer 为 null 时暂停。
   let pendingUndo = null;
+
+  // 当前编辑的结束函数，没有正在编辑的任务时为 null
+  let finishEditing = null;
 
   // 创建对象：应用状态
   // todos 数组中单个任务的结构为：
@@ -208,12 +200,15 @@
   // checked="todo.completed" 表示 checked 属性随完成状态设置，并非实际 HTML 写法。
   // <li class="todo [todo--completed]" data-id="todo.id">
   //   <label class="todo__check">
-  //     <input type="checkbox" class="todo__checkbox" checked="todo.completed" />
+  //     <input type="checkbox" class="todo__checkbox" checked="todo.completed"
+  //       aria-labelledby="todo-text-todo.id" />
   //     <span class="todo__box" aria-hidden="true">
   //       <svg viewBox="0 0 12 10"><path d="M1 5.5 4.5 9 11 1"/></svg>
   //     </span>
   //   </label>
-  //   <span class="todo__text">todo.text</span>
+  //   <span class="todo__text">
+  //     <span class="todo__text-content" id="todo-text-todo.id">todo.text</span>
+  //   </span>
   //   <button class="todo__edit" type="button" aria-label="编辑任务：todo.text">
   //     <svg viewBox="0 0 14 14"><path d="M8.8 2.7l2.5 2.5L4.5 12H2V9.5l6.8-6.8z"/><path d="M7.6 3.9l2.5 2.5"/></svg>
   //   </button>
@@ -227,7 +222,8 @@
   // │   ├─ input.todo__checkbox   ← 真正的勾选控件，透明覆盖在上面
   // │   └─ span.todo__box         ← 肉眼看到的方框，纯装饰
   // │       └─ svg                ← 肉眼看到的对勾，纯装饰
-  // ├─ span.todo__text            ← 任务文字，勾选后 CSS 给它画删除线
+  // ├─ span.todo__text            ← 文字容器，参与任务行的 flex 布局
+  // │   └─ span.todo__text-content ← 行内文字，勾选后每行分别展开删除线
   // ├─ button.todo__edit          ← 编辑按钮
   // │   └─ svg                    ← 编辑按钮里的铅笔图标
   // └─ button.todo__delete        ← 删除按钮
@@ -239,6 +235,11 @@
     const checkbox = el("input", "todo__checkbox");
     checkbox.type = "checkbox";
     checkbox.checked = todo.completed;
+    const text = el("span", "todo__text");
+    const content = el("span", "todo__text-content", todo.text);
+    content.id = `todo-text-${todo.id}`;
+    checkbox.setAttribute("aria-labelledby", content.id);
+    text.append(content);
     const box = el("span", "todo__box");
     box.setAttribute("aria-hidden", "true");
     box.innerHTML =
@@ -247,7 +248,7 @@
     check.append(checkbox, box);
     li.append(
       check,
-      el("span", "todo__text", todo.text),
+      text,
       svgBtn(
         "todo__edit",
         `编辑任务：${todo.text}`,
@@ -270,7 +271,7 @@
     } else if (state.filter === "completed") {
       return state.todos.filter((t) => t.completed);
     } else {
-      return [...state.todos];
+      return state.todos;
     }
   };
 
@@ -281,8 +282,8 @@
     if (!hasVisible) $empty.textContent = EMPTY_TEXT[state.filter];
   };
 
-  // 函数：更新底栏
-  const updateFooter = () => {
+  // 函数：更新任务统计与操作按钮状态
+  const updateSummaryAndControls = () => {
     const total = state.todos.length;
     const remaining = state.todos.filter((t) => !t.completed).length;
     $count.textContent =
@@ -297,38 +298,47 @@
     );
   };
 
-  // 函数：离线拼装并渲染
+  // 函数：在未挂载的 DocumentFragment 中拼装节点，再渲染列表
   // 完整渲染以 state 为数据来源；切换完成状态、行内编辑和删除等操作会局部更新 DOM。
   const render = () => {
+    const focused = document.activeElement;
+    const focusedRow = focused.closest(".todo");
+    const focusSelector = focused.matches(".todo__edit, .todo__edit-input")
+      ? ".todo__edit"
+      : focused.matches(".todo__delete")
+        ? ".todo__delete"
+        : ".todo__checkbox";
+    // 重绘前提交编辑草稿；重绘后恢复原任务上的键盘操作位置。
+    finishEditing?.(true);
     const fragment = document.createDocumentFragment();
     getVisibleTodos().forEach((todo) =>
       fragment.append(createTodoElement(todo)),
     );
     $list.replaceChildren(fragment);
     refreshEmptyState();
-    updateFooter();
+    updateSummaryAndControls();
+    if (focusedRow) {
+      const row = [...$list.children].find(
+        (li) => li.dataset.id === focusedRow.dataset.id,
+      );
+      (row?.querySelector(focusSelector) || $input).focus();
+    }
   };
 
   /* -------------------- 业务操作 -------------------- */
 
-  // 函数：防抖写入
-  const persist = debounce(() => store.save(), SAVE_DELAY);
-
-  // 函数：立即写入
-  // 在页面隐藏前调用，防止数据丢失
-  const flushPersist = () => store.save();
-
   // 函数：设置筛选状态
-  // 默认将筛选状态同步到 URL hash，并防抖写入 localStorage。
+  // 默认将筛选状态同步到 URL hash，状态变化后立即写入 localStorage。
   // 参数：updateHash 控制是否同步 URL hash；persist 控制是否写入本地存储。
-  // 跨标签页同步时将 persist 设为 false，避免标签页之间反复触发写入。
+  // 初始化恢复状态或与新增任务一并保存时，将 persist 设为 false，避免重复写入。
   const setFilter = (
     filter,
-    { updateHash = true, persist: shouldPersist = true } = {},
+    { updateHash = true, persist = true } = {},
   ) => {
     const next = FILTERS.includes(filter) ? filter : "all";
+    const changed = next !== state.filter;
     state.filter = next;
-    if (shouldPersist) persist();
+    if (changed && persist) store.save();
     if (updateHash) {
       history.replaceState(
         null,
@@ -338,7 +348,7 @@
     }
     $filters.querySelectorAll(".filters__btn").forEach((b) => {
       const isActive = b.dataset.filter === next;
-      b.classList.toggle("is-active", isActive);
+      b.classList.toggle("filters__btn--active", isActive);
       b.setAttribute("aria-pressed", String(isActive));
     });
     render();
@@ -352,6 +362,7 @@
 
   // 函数：添加 todo
   const addTodo = (text) => {
+    finishEditing?.(true);
     const todo = { id: createId(), text, completed: false };
     state.todos.unshift(todo);
     pendingUndo?.batches.forEach((items) => {
@@ -359,12 +370,12 @@
         item.index += 1;
       });
     });
-    persist();
     if (state.filter === "completed") {
-      setFilter("all");
+      setFilter("all", { persist: false });
     } else {
       render();
     }
+    store.save();
     $list.querySelector(`[data-id="${todo.id}"]`)?.classList.add("todo--enter");
   };
 
@@ -373,7 +384,7 @@
     const todo = state.todos.find((t) => t.id === id);
     if (!todo) return;
     todo.completed = !todo.completed;
-    persist();
+    store.save();
     const li = $list.querySelector(`[data-id="${id}"]`);
     if (li) {
       if (state.filter === "all") {
@@ -383,6 +394,7 @@
         li.addEventListener(
           "animationend",
           () => {
+            moveFocusFromTodo(li);
             li.remove();
             refreshEmptyState();
           },
@@ -390,17 +402,13 @@
         );
       }
     }
-    updateFooter();
+    updateSummaryAndControls();
   };
 
   // 函数：行内编辑
   const startEdit = (li, todo) => {
-    if (
-      li.classList.contains("todo--editing") ||
-      li.classList.contains("todo--leaving")
-    ) {
-      return;
-    }
+    if (isBusy(li)) return;
+    finishEditing?.(true);
     li.classList.add("todo--editing");
     const input = el("input", "todo__edit-input");
     input.type = "text";
@@ -411,14 +419,15 @@
     input.focus();
     input.select();
     let settled = false;
-    const finish = (commit) => {
+    const finish = (commit, restoreFocus = false) => {
       if (settled) return;
       settled = true;
+      finishEditing = null;
       const text = input.value.trim();
       if (commit && text && text !== todo.text) {
         todo.text = text;
-        persist();
-        li.querySelector(".todo__text").textContent = text;
+        store.save();
+        li.querySelector(".todo__text-content").textContent = text;
         li.querySelector(".todo__edit").setAttribute(
           "aria-label",
           `编辑任务：${text}`,
@@ -430,13 +439,17 @@
       }
       li.classList.remove("todo--editing");
       input.remove();
+      if (restoreFocus) li.querySelector(".todo__edit").focus();
     };
+    finishEditing = finish;
     input.addEventListener("keydown", (event) => {
+      if (event.isComposing) return;
       if (event.key === "Enter") {
         event.preventDefault();
-        finish(true);
+        finish(true, true);
       } else if (event.key === "Escape") {
-        finish(false);
+        event.preventDefault();
+        finish(false, true);
       }
     });
     input.addEventListener("blur", () => finish(true));
@@ -458,13 +471,14 @@
   const deleteTodo = (id, li) => {
     const items = removeFromState([id]);
     if (!items.length) return;
-    persist();
-    updateFooter();
+    store.save();
+    updateSummaryAndControls();
     showUndoToast(items);
     li.classList.add("todo--leaving");
     li.addEventListener(
       "animationend",
       () => {
+        moveFocusFromTodo(li);
         li.remove();
         refreshEmptyState();
       },
@@ -474,12 +488,17 @@
 
   // 函数：清除已完成
   const clearCompleted = () => {
+    finishEditing?.(true);
+    const restoreFocus = document.activeElement === $clearBtn;
     const items = removeFromState(
       state.todos.filter((t) => t.completed).map((t) => t.id),
     );
     if (!items.length) return;
-    persist();
+    store.save();
     render();
+    if (restoreFocus) {
+      ($list.querySelector(".todo__checkbox") || $input).focus();
+    }
     showUndoToast(items);
   };
 
@@ -487,6 +506,8 @@
   // 按删除批次的逆序还原，同一批次按原下标升序插回
   const undoDelete = () => {
     if (!pendingUndo) return;
+    finishEditing?.(true);
+    const restoreFocus = $toast.contains(document.activeElement);
     const batches = [...pendingUndo.batches].reverse();
     hideUndoToast();
     batches.forEach((items) =>
@@ -494,18 +515,22 @@
         state.todos.splice(Math.min(index, state.todos.length), 0, todo),
       ),
     );
-    persist();
+    store.save();
     render();
+    if (restoreFocus) {
+      ($list.querySelector(".todo__checkbox") || $input).focus();
+    }
   };
 
   // 函数：切换全选状态
   const toggleAllTodos = () => {
     if (!state.todos.length) return;
+    finishEditing?.(true);
     const hasActive = state.todos.some((t) => !t.completed);
     state.todos.forEach((t) => {
       t.completed = hasActive;
     });
-    persist();
+    store.save();
     render();
   };
 
@@ -515,9 +540,24 @@
     li.classList.contains("todo--editing") ||
     li.classList.contains("todo--leaving");
 
+  // 函数：移除任务前，将行内焦点转移到相邻任务；用户已移开焦点时不干预。
+  const moveFocusFromTodo = (li) => {
+    if (!li.contains(document.activeElement)) return;
+    const rows = [...$list.children];
+    const index = rows.indexOf(li);
+    const targetRow =
+      rows.slice(index + 1).find((row) => !isBusy(row)) ||
+      rows
+        .slice(0, index)
+        .reverse()
+        .find((row) => !isBusy(row));
+    (targetRow?.querySelector(".todo__checkbox") || $input).focus();
+  };
+
   // 函数：显示输入错误（提示+抖动）
   const showInputError = () => {
     $input.setAttribute("aria-invalid", "true");
+    $input.setAttribute("aria-describedby", "input-hint");
     $hint.hidden = false;
     $form.classList.remove("todo-form--shake");
     // 读取布局，让移除动画类的样式先生效，再添加类以重新触发抖动。
@@ -528,52 +568,81 @@
   // 函数：清除输入错误
   const clearInputError = () => {
     $input.removeAttribute("aria-invalid");
+    $input.removeAttribute("aria-describedby");
     $hint.hidden = true;
   };
 
   /* -------------------- 撤销 Toast -------------------- */
 
-  // Toast 入口
+  // 函数：显示撤销提示，合并删除批次并重置倒计时
   const showUndoToast = (newItems) => {
     if (pendingUndo) {
       clearTimeout(pendingUndo.timer);
-      pendingUndo.batches.push([...newItems]);
+      pendingUndo.batches.push(newItems);
     } else {
-      pendingUndo = { batches: [[...newItems]], timer: null };
+      pendingUndo = {
+        batches: [newItems],
+        startedAt: 0,
+      };
       $toast.hidden = false;
       requestAnimationFrame(() => $toast.classList.add("toast--visible"));
     }
+    pendingUndo.timer = null;
+    pendingUndo.remaining = UNDO_DURATION;
+    $toastUndo.disabled = false;
     const n = pendingUndo.batches.reduce((total, items) => total + items.length, 0);
     $toastText.textContent = n === 1 ? "任务已删除" : `已删除 ${n} 条任务`;
-    restartCountdown();
-    pendingUndo.timer = setTimeout(finalizeUndo, UNDO_DURATION);
+    resetCountdownProgress();
+    if (!$toast.contains(document.activeElement)) resumeCountdown();
   };
 
-  // Toast 重启进度条
-  const restartCountdown = () => {
+  // 函数：重置倒计时进度条，并保持暂停状态
+  const resetCountdownProgress = () => {
     $toastProgress.style.animation = "none";
-    // 读取布局，让动画禁用先生效，再恢复动画以重启倒计时。
+    // 读取布局，让动画禁用先生效，再恢复动画以重置进度条。
     void $toastProgress.offsetWidth;
     $toastProgress.style.animation = "";
     $toastProgress.style.animationDuration = `${UNDO_DURATION}ms`;
+    $toastProgress.style.animationPlayState = "paused";
   };
 
-  // Toast 退场过渡
+  // 函数：暂停倒计时，同时记录剩余时间并暂停进度条
+  const pauseCountdown = () => {
+    if (!pendingUndo || pendingUndo.timer === null) return;
+    clearTimeout(pendingUndo.timer);
+    pendingUndo.timer = null;
+    pendingUndo.remaining = Math.max(
+      0,
+      pendingUndo.remaining - (performance.now() - pendingUndo.startedAt),
+    );
+    $toastProgress.style.animationPlayState = "paused";
+  };
+
+  // 函数：按剩余时间继续倒计时，不重新计算完整的撤销窗口
+  const resumeCountdown = () => {
+    if (!pendingUndo || pendingUndo.timer !== null) return;
+    pendingUndo.startedAt = performance.now();
+    pendingUndo.timer = setTimeout(finalizeUndo, pendingUndo.remaining);
+    $toastProgress.style.animationPlayState = "running";
+  };
+
+  // 函数：禁用撤销按钮，触发 Toast 退场并延迟隐藏节点
   const dismissToast = () => {
+    $toastUndo.disabled = true;
     $toast.classList.remove("toast--visible");
     setTimeout(() => {
       if (!pendingUndo) $toast.hidden = true;
-    }, TOAST_EXIT);
+    }, TOAST_HIDE_DELAY);
   };
 
-  // Toast 窗口到期
+  // 函数：倒计时到期后清除撤销状态并关闭 Toast
   const finalizeUndo = () => {
     if (!pendingUndo) return;
     pendingUndo = null;
     dismissToast();
   };
 
-  // Toast 主动隐藏
+  // 函数：主动结束撤销窗口，清除定时器与撤销状态并关闭 Toast
   const hideUndoToast = () => {
     clearTimeout(pendingUndo?.timer);
     pendingUndo = null;
@@ -642,33 +711,21 @@
   $toastUndo.addEventListener("click", undoDelete);
   $themeToggle.addEventListener("click", cycleTheme);
 
-  // 监听器：hashchange
-  window.addEventListener("hashchange", () => {
-    const f = filterFromHash();
-    if (f && f !== state.filter) setFilter(f, { updateHash: false });
+  // 监听器：焦点进入撤销窗口时暂停，离开整个窗口后继续倒计时
+  $toast.addEventListener("focusin", pauseCountdown);
+  $toast.addEventListener("focusout", (event) => {
+    if (!$toast.contains(event.relatedTarget)) resumeCountdown();
   });
 
-  // 监听器：多标签页同步
-  window.addEventListener("storage", (event) => {
-    if (event.key === STORAGE_KEY) {
-      const data = store.load();
-      state.todos = data.todos;
-      setFilter(data.filter, { persist: false });
-    } else if (event.key === THEME_KEY) {
-      state.theme = store.loadTheme();
-      applyTheme();
-    }
+  // 监听器：hashchange
+  window.addEventListener("hashchange", () => {
+    const f = location.hash ? filterFromHash() : "all";
+    if (f && f !== state.filter) setFilter(f, { updateHash: false });
   });
 
   // 监听器：系统主题改变
   darkMedia?.addEventListener?.("change", () => {
     if (state.theme === "auto") applyTheme();
-  });
-
-  // 监听器：页面隐藏时立即写入
-  window.addEventListener("pagehide", flushPersist);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flushPersist();
   });
 
   /* -------------------- 初始化 -------------------- */
@@ -678,7 +735,10 @@
     applyTheme();
     // 筛选优先级：URL hash > 本地存储 > 'all'
     const fromHash = filterFromHash();
-    setFilter(fromHash || state.filter, { updateHash: !fromHash });
+    setFilter(fromHash || state.filter, {
+      updateHash: !fromHash,
+      persist: false,
+    });
   };
 
   // 启动

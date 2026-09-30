@@ -10,14 +10,18 @@
     <!-- -------------------- 主题防闪烁脚本 -------------------- -->
     <script>
       (() => {
+        let theme = "auto";
         try {
-          const t = localStorage.getItem("todo-app:theme") || "auto";
-          const dark =
-            t === "auto"
-              ? window.matchMedia("(prefers-color-scheme: dark)").matches
-              : t === "dark";
-          document.documentElement.dataset.theme = dark ? "dark" : "light";
-        } catch (e) {}
+          const t = localStorage.getItem("todo-app:theme");
+          theme = t === "light" || t === "dark" ? t : "auto";
+        } catch {
+          /* 读取失败时跟随系统 */
+        }
+        const dark =
+          theme === "auto"
+            ? window.matchMedia?.("(prefers-color-scheme: dark)")?.matches
+            : theme === "dark";
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
       })();
     </script>
     <!-- -------------------- 样式与脚本 -------------------- -->
@@ -43,7 +47,7 @@
             id="theme-icon"
             aria-hidden="true"
           ></span>
-          <span id="theme-label">跟随系统</span>
+          <span class="theme-toggle__label" id="theme-label">跟随系统</span>
         </button>
       </header>
       <!-- -------------------- 任务卡片 -------------------- -->
@@ -80,7 +84,7 @@
         <!-- 筛选器 -->
         <div class="filters" id="filters" role="group" aria-label="筛选任务">
           <button
-            class="filters__btn is-active"
+            class="filters__btn filters__btn--active"
             type="button"
             data-filter="all"
             aria-pressed="true"
