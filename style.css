@@ -68,7 +68,7 @@
   --radius-md: 10px;
   /* 大容器 */
   --radius-lg: 16px;
-  /* 完全圆形 */
+  /* 圆形或胶囊形圆角 */
   --radius-full: 999px;
 
   /* 动效时长与缓动 */
@@ -648,7 +648,7 @@ input:focus-visible {
   color: inherit;
   background: none;
   border: none;
-  border-radius: var(--space-1);
+  border-radius: 4px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;

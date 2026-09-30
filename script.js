@@ -27,7 +27,8 @@
 
   // 函数：清洗任务数据
   // 参数：item 是从本地存储读出的单条任务数据
-  // 返回值：结构统一的任务对象，数据非法时返回 null
+  // 处理：为非字符串 ID 生成替代值，将 completed 转为布尔值。
+  // 返回值：结构统一的任务对象；item 为空或 text 不是字符串时返回 null。
   const sanitizeTodo = (item) =>
     item && typeof item.text === "string"
       ? {
@@ -39,7 +40,7 @@
 
   // 函数：创建元素
   // 返回结果等价于：<tag class="className">text</tag>
-  const el = (tag, className, text) => {
+  const createElement = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
@@ -47,8 +48,8 @@
   };
 
   // 函数：创建 SVG 图标按钮
-  const svgBtn = (className, label, svg) => {
-    const btn = el("button", className);
+  const createSvgButton = (className, label, svg) => {
+    const btn = createElement("button", className);
     btn.type = "button";
     btn.setAttribute("aria-label", label);
     btn.innerHTML = svg;
@@ -104,7 +105,7 @@
 
   /* -------------------- 应用状态 -------------------- */
 
-  // 创建对象：撤销状态
+  // 撤销状态，初始为 null
   // 结构：{ batches: [[{ todo, index }]], timer, remaining, startedAt }
   // remaining 记录本轮开始或暂停时的剩余毫秒数，不实时递减。
   // startedAt 为本轮计时起点；timer 为 null 时暂停。
@@ -134,17 +135,17 @@
   const $form = $("todo-form");
   const $input = $("todo-input");
   const $hint = $("input-hint");
-  const $toggleAll = $("toggle-all");
+  const $toggleAllBtn = $("toggle-all");
   const $filters = $("filters");
   const $list = $("todo-list");
   const $empty = $("todo-empty");
   const $count = $("todo-count");
-  const $clearBtn = $("clear-completed");
+  const $clearCompletedBtn = $("clear-completed");
   const $toast = $("toast");
   const $toastText = $("toast-text");
   const $toastProgress = $("toast-progress");
-  const $toastUndo = $("toast-undo");
-  const $themeToggle = $("theme-toggle");
+  const $toastUndoBtn = $("toast-undo");
+  const $themeToggleBtn = $("theme-toggle");
   const $themeIcon = $("theme-icon");
   const $themeLabel = $("theme-label");
 
@@ -154,15 +155,23 @@
   const THEME_META = {
     auto: [
       "跟随系统",
-      '<svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5.5 13.5h5"/></svg>',
+      `<svg viewBox="0 0 16 16">
+        <rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/>
+        <path d="M5.5 13.5h5"/>
+      </svg>`,
     ],
     light: [
       "浅色",
-      '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1"/></svg>',
+      `<svg viewBox="0 0 16 16">
+        <circle cx="8" cy="8" r="3"/>
+        <path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M12.6 3.4l-1 1M4.4 11.6l-1 1"/>
+      </svg>`,
     ],
     dark: [
       "深色",
-      '<svg viewBox="0 0 16 16"><path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/></svg>',
+      `<svg viewBox="0 0 16 16">
+        <path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/>
+      </svg>`,
     ],
   };
   // 主题切换顺序
@@ -181,7 +190,7 @@
     const [label, icon] = THEME_META[state.theme];
     $themeIcon.innerHTML = icon;
     $themeLabel.textContent = label;
-    $themeToggle.setAttribute("aria-label", `当前主题：${label}，点击切换`);
+    $themeToggleBtn.setAttribute("aria-label", `当前主题：${label}，点击切换`);
   };
 
   // 函数：切换主题
@@ -230,34 +239,43 @@
   //     └─ svg                     ← 删除按钮里的叉号
   // 操作按钮在行悬停或行内元素匹配 :focus-visible 时显示；无悬停能力的设备上始终显示。
   const createTodoElement = (todo) => {
-    const li = el("li", `todo${todo.completed ? " todo--completed" : ""}`);
+    const li = createElement(
+      "li",
+      `todo${todo.completed ? " todo--completed" : ""}`,
+    );
     li.dataset.id = todo.id;
-    const checkbox = el("input", "todo__checkbox");
+    const checkbox = createElement("input", "todo__checkbox");
     checkbox.type = "checkbox";
     checkbox.checked = todo.completed;
-    const text = el("span", "todo__text");
-    const content = el("span", "todo__text-content", todo.text);
+    const text = createElement("span", "todo__text");
+    const content = createElement("span", "todo__text-content", todo.text);
     content.id = `todo-text-${todo.id}`;
     checkbox.setAttribute("aria-labelledby", content.id);
     text.append(content);
-    const box = el("span", "todo__box");
+    const box = createElement("span", "todo__box");
     box.setAttribute("aria-hidden", "true");
-    box.innerHTML =
-      '<svg viewBox="0 0 12 10"><path d="M1 5.5 4.5 9 11 1"/></svg>';
-    const check = el("label", "todo__check");
+    box.innerHTML = `<svg viewBox="0 0 12 10">
+      <path d="M1 5.5 4.5 9 11 1"/>
+    </svg>`;
+    const check = createElement("label", "todo__check");
     check.append(checkbox, box);
     li.append(
       check,
       text,
-      svgBtn(
+      createSvgButton(
         "todo__edit",
         `编辑任务：${todo.text}`,
-        '<svg viewBox="0 0 14 14"><path d="M8.8 2.7l2.5 2.5L4.5 12H2V9.5l6.8-6.8z"/><path d="M7.6 3.9l2.5 2.5"/></svg>',
+        `<svg viewBox="0 0 14 14">
+          <path d="M8.8 2.7l2.5 2.5L4.5 12H2V9.5l6.8-6.8z"/>
+          <path d="M7.6 3.9l2.5 2.5"/>
+        </svg>`,
       ),
-      svgBtn(
+      createSvgButton(
         "todo__delete",
         `删除任务：${todo.text}`,
-        '<svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg>',
+        `<svg viewBox="0 0 12 12">
+          <path d="M2 2l8 8M10 2l-8 8"/>
+        </svg>`,
       ),
     );
     return li;
@@ -290,9 +308,9 @@
       total > 0 && remaining === 0
         ? "全部完成，干得漂亮"
         : `${remaining} 项待完成`;
-    $clearBtn.disabled = !state.todos.some((t) => t.completed);
-    $toggleAll.disabled = total === 0;
-    $toggleAll.setAttribute(
+    $clearCompletedBtn.disabled = !state.todos.some((t) => t.completed);
+    $toggleAllBtn.disabled = total === 0;
+    $toggleAllBtn.setAttribute(
       "aria-pressed",
       String(total > 0 && remaining === 0),
     );
@@ -323,6 +341,46 @@
       );
       (row?.querySelector(focusSelector) || $input).focus();
     }
+  };
+
+  /* -------------------- 界面辅助 -------------------- */
+
+  // 函数：判断条目是否处于繁忙态（编辑中/离场中）
+  const isBusy = (li) =>
+    !li ||
+    li.classList.contains("todo--editing") ||
+    li.classList.contains("todo--leaving");
+
+  // 函数：移除任务前，将行内焦点转移到相邻任务；用户已移开焦点时不干预。
+  const moveFocusFromTodo = (li) => {
+    if (!li.contains(document.activeElement)) return;
+    const rows = [...$list.children];
+    const index = rows.indexOf(li);
+    const targetRow =
+      rows.slice(index + 1).find((row) => !isBusy(row)) ||
+      rows
+        .slice(0, index)
+        .reverse()
+        .find((row) => !isBusy(row));
+    (targetRow?.querySelector(".todo__checkbox") || $input).focus();
+  };
+
+  // 函数：显示输入错误（提示+抖动）
+  const showInputError = () => {
+    $input.setAttribute("aria-invalid", "true");
+    $input.setAttribute("aria-describedby", "input-hint");
+    $hint.hidden = false;
+    $form.classList.remove("todo-form--shake");
+    // 读取布局，让移除动画类的样式先生效，再添加类以重新触发抖动。
+    void $form.offsetWidth;
+    $form.classList.add("todo-form--shake");
+  };
+
+  // 函数：清除输入错误
+  const clearInputError = () => {
+    $input.removeAttribute("aria-invalid");
+    $input.removeAttribute("aria-describedby");
+    $hint.hidden = true;
   };
 
   /* -------------------- 业务操作 -------------------- */
@@ -407,7 +465,7 @@
     if (isBusy(li)) return;
     finishEditing?.(true);
     li.classList.add("todo--editing");
-    const input = el("input", "todo__edit-input");
+    const input = createElement("input", "todo__edit-input");
     input.type = "text";
     input.maxLength = 200;
     input.value = todo.text;
@@ -486,7 +544,7 @@
   // 函数：清除已完成
   const clearCompleted = () => {
     finishEditing?.(true);
-    const restoreFocus = document.activeElement === $clearBtn;
+    const restoreFocus = document.activeElement === $clearCompletedBtn;
     const items = removeFromState(
       state.todos.filter((t) => t.completed).map((t) => t.id),
     );
@@ -531,44 +589,6 @@
     render();
   };
 
-  // 函数：判断条目是否处于繁忙态（编辑中/离场中）
-  const isBusy = (li) =>
-    !li ||
-    li.classList.contains("todo--editing") ||
-    li.classList.contains("todo--leaving");
-
-  // 函数：移除任务前，将行内焦点转移到相邻任务；用户已移开焦点时不干预。
-  const moveFocusFromTodo = (li) => {
-    if (!li.contains(document.activeElement)) return;
-    const rows = [...$list.children];
-    const index = rows.indexOf(li);
-    const targetRow =
-      rows.slice(index + 1).find((row) => !isBusy(row)) ||
-      rows
-        .slice(0, index)
-        .reverse()
-        .find((row) => !isBusy(row));
-    (targetRow?.querySelector(".todo__checkbox") || $input).focus();
-  };
-
-  // 函数：显示输入错误（提示+抖动）
-  const showInputError = () => {
-    $input.setAttribute("aria-invalid", "true");
-    $input.setAttribute("aria-describedby", "input-hint");
-    $hint.hidden = false;
-    $form.classList.remove("todo-form--shake");
-    // 读取布局，让移除动画类的样式先生效，再添加类以重新触发抖动。
-    void $form.offsetWidth;
-    $form.classList.add("todo-form--shake");
-  };
-
-  // 函数：清除输入错误
-  const clearInputError = () => {
-    $input.removeAttribute("aria-invalid");
-    $input.removeAttribute("aria-describedby");
-    $hint.hidden = true;
-  };
-
   /* -------------------- 撤销 Toast -------------------- */
 
   // 函数：显示撤销提示，合并删除批次并重置倒计时
@@ -586,7 +606,7 @@
     }
     pendingUndo.timer = null;
     pendingUndo.remaining = UNDO_DURATION;
-    $toastUndo.disabled = false;
+    $toastUndoBtn.disabled = false;
     const n = pendingUndo.batches.reduce(
       (total, items) => total + items.length,
       0,
@@ -636,7 +656,7 @@
 
   // 函数：禁用撤销按钮，触发 Toast 退场并延迟隐藏节点
   const dismissToast = () => {
-    $toastUndo.disabled = true;
+    $toastUndoBtn.disabled = true;
     $toast.classList.remove("toast--visible");
     setTimeout(() => {
       if (!pendingUndo) $toast.hidden = true;
@@ -714,10 +734,10 @@
     if (btn) setFilter(btn.dataset.filter);
   });
 
-  $clearBtn.addEventListener("click", clearCompleted);
-  $toggleAll.addEventListener("click", toggleAllTodos);
-  $toastUndo.addEventListener("click", undoDelete);
-  $themeToggle.addEventListener("click", cycleTheme);
+  $clearCompletedBtn.addEventListener("click", clearCompleted);
+  $toggleAllBtn.addEventListener("click", toggleAllTodos);
+  $toastUndoBtn.addEventListener("click", undoDelete);
+  $themeToggleBtn.addEventListener("click", cycleTheme);
 
   // 监听器：鼠标悬停或焦点进入撤销窗口时暂停，两者都离开后继续倒计时
   $toast.addEventListener("mouseenter", pauseCountdown);
