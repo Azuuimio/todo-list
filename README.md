@@ -1,5 +1,5 @@
 # 前端练习项目：待办清单
 
-原生 HTML / CSS / JS 实现的极简待办清单。
+原生 HTML / CSS / JS 实现的极简待办清单
 
 在线预览：https://azuuimio.github.io/todo-list/
